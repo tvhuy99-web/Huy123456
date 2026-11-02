@@ -110,6 +110,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 progressBar.visibility = View.GONE
                 injectMobileOptimizations(view)
+                injectAndroidAccessibility(view)
             }
 
             override fun onReceivedError(
@@ -234,6 +235,19 @@ class MainActivity : AppCompatActivity() {
                 customView = null
                 customViewCallback = null
             }
+        }
+    }
+
+    // Accessibility layer is APK-only. The SillyTavern browser UI itself
+    // remains unmodified, and its dynamic buttons are relabeled in-place.
+    private fun injectAndroidAccessibility(view: WebView?) {
+        view ?: return
+        try {
+            val script = assets.open("st-accessibility.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            view.evaluateJavascript(script, null)
+        } catch (e: Exception) {
+            android.util.Log.e("SillyTavernA11y", "Accessibility script unavailable", e)
         }
     }
 
