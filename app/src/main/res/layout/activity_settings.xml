@@ -23,6 +23,7 @@
             android:textStyle="bold" />
 
         <View
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginTop="16dp"
@@ -34,6 +35,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="酒馆服务地址"
+            android:contentDescription="Địa chỉ máy chủ SillyTavern"
+            android:labelFor="@id/edit_server_url"
             android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -64,6 +67,7 @@
         <!-- Test Result -->
         <TextView
             android:id="@+id/text_test_result"
+            android:accessibilityLiveRegion="polite"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -79,6 +83,7 @@
 
             <Button
                 android:id="@+id/btn_test"
+        android:contentDescription="Kiểm tra kết nối máy chủ"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="48dp"
@@ -91,6 +96,7 @@
 
             <Button
                 android:id="@+id/btn_save"
+        android:contentDescription="Lưu cài đặt"
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
@@ -104,6 +110,7 @@
         </LinearLayout>
 
         <View
+            android:importantForAccessibility="no"
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginTop="24dp"
@@ -124,6 +131,7 @@
         <!-- Back Button -->
         <Button
             android:id="@+id/btn_back"
+        android:contentDescription="Quay lại màn hình trước"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="48dp"
