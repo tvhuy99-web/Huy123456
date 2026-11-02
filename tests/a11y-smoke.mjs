@@ -55,18 +55,22 @@ const options = new FakeElement('div',{id:'options_button',classes:['interactabl
 const native = new FakeElement('button',{text:'Lưu cài đặt'});
 const icon = new FakeElement('i',{classes:['fa-solid','fa-save']});
 native.append(icon);
+const copyMessage = new FakeElement('div',{classes:['mes_button','mes_copy','fa-solid','fa-copy'],title:'Copy'});
+const previousSwipe = new FakeElement('div',{classes:['swipe_left','fa-solid','fa-chevron-left']});
+const chatEntry = new FakeElement('div',{classes:['select_chat_block']});
+chatEntry.append(new FakeElement('span',{classes:['select_chat_block_filename'],text:'Cuộc trò chuyện A'}));
 const decorative = new FakeElement('img',{alt:''});
 const meaningful = new FakeElement('img',{alt:'Hình nhân vật'});
 const imageControl = new FakeElement('div',{id:'customImageButton',classes:['menu_button']});
 imageControl.append(new FakeElement('img',{alt:'Mở bộ sưu tập'}));
-const elements=[send,options,native,decorative,meaningful,imageControl];
+const elements=[send,options,native,copyMessage,previousSwipe,chatEntry,decorative,meaningful,imageControl];
 const listeners={};
 const document = {
   body:{},
   documentElement:{},
   getElementById: id => elements.find(el=>el.id===id) || null,
   querySelectorAll: selector => {
-    if(selector.startsWith('button,')) return [send,options,native,imageControl];
+    if(selector.startsWith('button,')) return [send,options,native,copyMessage,previousSwipe,chatEntry,imageControl];
     if(selector.startsWith('img,i.fa')) return [decorative,meaningful,icon,...imageControl.children];
     return [];
   },
@@ -86,6 +90,10 @@ assert.equal(send.getAttribute('aria-label'),'Gửi tin nhắn');
 assert.equal(send.getAttribute('role'),'button');
 assert.equal(send.getAttribute('tabindex'),'0');
 assert.equal(options.getAttribute('aria-label'),'Mở tùy chọn trò chuyện');
+assert.equal(copyMessage.getAttribute('aria-label'),'Sao chép tin nhắn');
+assert.equal(copyMessage.getAttribute('role'),'button');
+assert.equal(previousSwipe.getAttribute('aria-label'),'Xem phản hồi trước');
+assert.equal(chatEntry.getAttribute('aria-label'),'Mở cuộc trò chuyện: Cuộc trò chuyện A');
 assert.equal(native.getAttribute('aria-label'),'Lưu cài đặt');
 assert.equal(native.getAttribute('role'),null,'native semantic role must be preserved');
 assert.equal(icon.getAttribute('aria-hidden'),'true','nested visual icon must be hidden');
