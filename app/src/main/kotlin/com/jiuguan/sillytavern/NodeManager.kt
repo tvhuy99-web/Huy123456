@@ -21,7 +21,7 @@ class NodeManager(private val context: Context) {
 
     companion object {
         private const val TAG = "NodeManager"
-        const val SERVER_PORT = 8000
+        const val SERVER_PORT = 8001
         const val SERVER_HOST = "127.0.0.1"
 
         private const val ST_DIR = "sillytavern"
@@ -29,7 +29,7 @@ class NodeManager(private val context: Context) {
         private const val VERSION_FILE = "v2_version.txt"
 
         // Current bundle version - bump this to force re-extraction
-        const val BUNDLE_VERSION = "1"
+        const val BUNDLE_VERSION = "1.19.0-1"
     }
 
     private var nodeProcess: Process? = null
@@ -91,59 +91,101 @@ class NodeManager(private val context: Context) {
      * Expected asset: sillytavern.zip containing server.js, node_modules, etc.
      */
     suspend fun extractSillyTavern(onProgress: (String) -> Unit) = withContext(Dispatchers.IO) {
-        onProgress("正在解压 SillyTavern...")
-        val stDir = File(baseDir, ST_DIR)
+        // Install a new SillyTavern tree beside the currently working one.
+        // Never erase the user's data or the last functional engine before
+        // the new archive has been extracted and validated.
+        val activeDir = stDir
+        val stageDir = File(baseDir, "sillytavern-installing")
+        val rollbackDir = File(baseDir, "sillytavern-rollback")
+        val versionMarker = File(baseDir, VERSION_FILE)
+
+        // Recover an interrupted update before trying again.
+        if (rollbackDir.exists()) {
+            val activeData = File(activeDir, "data")
+            val rollbackData = File(rollbackDir, "data")
+            if (activeData.exists() && !rollbackData.exists()) {
+                if (!activeData.renameTo(rollbackData)) {
+                    throw IOException("Cannot recover SillyTavern user data")
+                }
+            }
+            if (activeDir.exists() && !activeDir.deleteRecursively()) {
+                throw IOException("Cannot clean interrupted engine install")
+            }
+            if (!rollbackDir.renameTo(activeDir)) {
+                throw IOException("Cannot restore previous SillyTavern engine")
+            }
+            Log.w(TAG, "Recovered last SillyTavern installation after interruption")
+        }
+
+        if (stageDir.exists() && !stageDir.deleteRecursively()) {
+            throw IOException("Cannot clear interrupted SillyTavern staging directory")
+        }
+        if (!stageDir.mkdirs()) throw IOException("Cannot create staging directory")
 
         try {
-            // Preserve user data across updates
-            val dataDir = File(stDir, "data")
-            val dataBackup = File(context.cacheDir, "st_data_backup")
-
-            // If backup already exists from a previously interrupted extraction, keep it
-            if (dataBackup.exists()) {
-                Log.w(TAG, "Found backup from interrupted extraction, will restore after extract")
-            } else if (dataDir.exists() && (dataDir.list()?.isNotEmpty() == true)) {
-                // Normal case: move data/ to backup before re-extraction
-                onProgress("正在备份用户数据...")
-                dataDir.renameTo(dataBackup)
-                Log.i(TAG, "User data backed up to: ${dataBackup.absolutePath}")
-            }
-            val hasBackup = dataBackup.exists()
-
-            // Clean old SillyTavern files (data already moved out)
-            if (stDir.exists()) {
-                onProgress("正在清理旧文件...")
-                stDir.deleteRecursively()
-            }
-            stDir.mkdirs()
-
-            // Copy to temp file first - AssetManager streaming can corrupt large zips
-            val tmpZip = File(context.cacheDir, "sillytavern.zip")
-            onProgress("正在准备解压文件...")
+            onProgress("Đang chuẩn bị SillyTavern 1.19.0...")
+            val tmpZip = File(context.cacheDir, "sillytavern-1.19.0.zip")
             context.assets.open("sillytavern.zip").use { input ->
                 FileOutputStream(tmpZip).use { output -> input.copyTo(output, 65536) }
             }
-            onProgress("正在解压 SillyTavern...")
-            FileInputStream(tmpZip).use { input ->
-                extractZip(input, stDir, onProgress)
-            }
-            tmpZip.delete()
-
-            // Restore user data
-            if (hasBackup && dataBackup.exists()) {
-                onProgress("正在恢复用户数据...")
-                if (dataDir.exists()) dataDir.deleteRecursively()
-                dataBackup.renameTo(dataDir)
-                Log.i(TAG, "User data restored to: ${dataDir.absolutePath}")
+            try {
+                FileInputStream(tmpZip).use { input -> extractZip(input, stageDir, onProgress) }
+            } finally {
+                tmpZip.delete()
             }
 
-            // Write version marker
-            File(baseDir, VERSION_FILE).writeText(BUNDLE_VERSION)
+            val stageServer = File(stageDir, "server.js")
+            val stagePackage = File(stageDir, "package.json")
+            val stageModules = File(stageDir, "node_modules")
+            if (!stageServer.isFile || !stagePackage.isFile || !stageModules.isDirectory) {
+                throw IOException("SillyTavern 1.19.0 package is incomplete")
+            }
+            val version = org.json.JSONObject(stagePackage.readText()).optString("version")
+            if (version != "1.19.0") {
+                throw IOException("Expected SillyTavern 1.19.0 but package contains $version")
+            }
 
-            Log.i(TAG, "SillyTavern extracted to: ${stDir.absolutePath}")
+            onProgress("Đang nâng cấp và giữ dữ liệu...")
+            if (activeDir.exists() && !activeDir.renameTo(rollbackDir)) {
+                throw IOException("Cannot move existing SillyTavern engine to backup")
+            }
+            if (!stageDir.renameTo(activeDir)) {
+                if (rollbackDir.exists()) rollbackDir.renameTo(activeDir)
+                throw IOException("Cannot activate updated SillyTavern engine")
+            }
+
+            val oldData = File(rollbackDir, "data")
+            if (oldData.exists()) {
+                val newData = File(activeDir, "data")
+                if (newData.exists() && !newData.deleteRecursively()) {
+                    throw IOException("Cannot replace default data with user data")
+                }
+                if (!oldData.renameTo(newData)) {
+                    throw IOException("Cannot move existing user data to new engine")
+                }
+            }
+            // Mark success only when source, dependencies AND data are installed.
+            versionMarker.writeText(BUNDLE_VERSION)
+            if (rollbackDir.exists() && !rollbackDir.deleteRecursively()) {
+                Log.w(TAG, "Old engine retained in rollback directory")
+            }
+            Log.i(TAG, "SillyTavern 1.19.0 installed; data retained")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to extract SillyTavern", e)
+            Log.e(TAG, "SillyTavern upgrade failed; restoring previous engine", e)
+            if (rollbackDir.exists()) {
+                val restoredData = File(activeDir, "data")
+                val originalData = File(rollbackDir, "data")
+                if (restoredData.exists() && !originalData.exists()) {
+                    restoredData.renameTo(originalData)
+                }
+                if (activeDir.exists()) activeDir.deleteRecursively()
+                if (!rollbackDir.renameTo(activeDir)) {
+                    Log.e(TAG, "Automatic rollback failed: saved engine at ${rollbackDir.absolutePath}")
+                }
+            }
             throw e
+        } finally {
+            if (stageDir.exists()) stageDir.deleteRecursively()
         }
     }
 
