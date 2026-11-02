@@ -28,10 +28,18 @@ class NodeService : Service() {
             val intent = Intent(context, NodeService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            lastStartError = null
+            isStarting = true
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                isStarting = false
+                lastStartError = e.message ?: e.javaClass.simpleName
+                throw e
             }
         }
 
@@ -43,15 +51,24 @@ class NodeService : Service() {
             context.startService(intent)
         }
 
-        /** Check if the service is currently running */
+        /** State and error visible to the launcher during service startup. */
         @Volatile
         var isRunning = false
+            private set
+
+        @Volatile
+        var isStarting = false
+            private set
+
+        @Volatile
+        var lastStartError: String? = null
             private set
     }
 
     private lateinit var nodeManager: NodeManager
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var watchdogJob: Job? = null
+    private var startupJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -78,6 +95,8 @@ class NodeService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        isStarting = false
+        startupJob?.cancel()
         watchdogJob?.cancel()
         serviceScope.cancel()
         nodeManager.stopServer()
@@ -86,10 +105,14 @@ class NodeService : Service() {
     }
 
     private fun startNodeServer() {
-        serviceScope.launch {
+        if (isRunning || startupJob?.isActive == true) return
+        isStarting = true
+        lastStartError = null
+        startupJob = serviceScope.launch {
             try {
                 if (!nodeManager.isReady()) {
-                    updateNotification("Node.js 或 SillyTavern 未就绪")
+                    lastStartError = "Node.js hoặc SillyTavern chưa sẵn sàng"
+                    updateNotification("Node.js hoặc SillyTavern chưa sẵn sàng")
                     Log.e(TAG, "Cannot start: not ready")
                     return@launch
                 }
@@ -97,16 +120,21 @@ class NodeService : Service() {
                 val error = nodeManager.startServer()
                 if (error == null) {
                     isRunning = true
+                    lastStartError = null
                     updateNotification("SillyTavern 运行中 · ${nodeManager.serverUrl}")
                     startWatchdog()
                     Log.i(TAG, "Server started successfully")
                 } else {
+                    lastStartError = error
                     updateNotification("启动失败")
                     Log.e(TAG, "Failed to start server: $error")
                 }
             } catch (e: Exception) {
+                lastStartError = e.message ?: e.javaClass.simpleName
                 updateNotification("启动出错: ${e.message}")
                 Log.e(TAG, "Error starting server", e)
+            } finally {
+                isStarting = false
             }
         }
     }
@@ -119,14 +147,17 @@ class NodeService : Service() {
                 delay(5000) // Check every 5 seconds
                 if (!nodeManager.isProcessAlive()) {
                     Log.w(TAG, "Node.js process died, restarting...")
+                    isRunning = false
                     updateNotification("正在重启服务...")
                     delay(1000)
                     val restartError = nodeManager.startServer()
                     if (restartError == null) {
+                        isRunning = true
+                        lastStartError = null
                         updateNotification("SillyTavern 运行中 · ${nodeManager.serverUrl}")
                     } else {
+                        lastStartError = restartError
                         updateNotification("重启失败，请重新打开APP")
-                        isRunning = false
                         break
                     }
                 }

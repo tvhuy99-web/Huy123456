@@ -130,6 +130,13 @@ assert.equal(window.__stAndroidAccessibilityInstalled,true,'must remain installe
 const main = readFileSync(new URL('../app/src/main/kotlin/com/jiuguan/sillytavern/MainActivity.kt',import.meta.url),'utf8');
 assert.match(main,/injectAndroidAccessibility\(view\)/);
 assert.match(main,/assets\.open\("st-accessibility\.js"\)/);
+const launcherSource = readFileSync(new URL('../app/src/main/kotlin/com/jiuguan/sillytavern/LauncherActivity.kt',import.meta.url),'utf8');
+const nodeSource = readFileSync(new URL('../app/src/main/kotlin/com/jiuguan/sillytavern/NodeManager.kt',import.meta.url),'utf8');
+const nodeServiceSource = readFileSync(new URL('../app/src/main/kotlin/com/jiuguan/sillytavern/NodeService.kt',import.meta.url),'utf8');
+assert.match(launcherSource,/NodeService\.start\(this@LauncherActivity\)/,'launcher must use foreground service');
+assert.doesNotMatch(launcherSource,/nodeManager\.startServer\(\)/,'launcher must not spawn unmanaged Node processes');
+assert.match(nodeSource,/nodeProcess\?\.isAlive == true/,'dead child must be cleared before restart');
+assert.match(nodeServiceSource,/var lastStartError/,'startup errors must be visible');
 const launcher=readFileSync(new URL('../app/src/main/res/layout/activity_launcher.xml',import.meta.url),'utf8');
 const settings=readFileSync(new URL('../app/src/main/res/layout/activity_settings.xml',import.meta.url),'utf8');
 assert.match(launcher,/android:importantForAccessibility="no"/);

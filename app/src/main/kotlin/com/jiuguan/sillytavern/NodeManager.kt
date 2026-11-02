@@ -295,10 +295,13 @@ class NodeManager(private val context: Context) {
      * Returns null on success, or error message on failure.
      */
     fun startServer(): String? {
-        if (nodeProcess != null) {
+        // A crashed child process leaves a non-null Process object. Clear it
+        // so the foreground service watchdog can genuinely restart Node.js.
+        if (nodeProcess?.isAlive == true) {
             Log.w(TAG, "Server already running")
             return null
         }
+        nodeProcess = null
 
         if (!isReady()) {
             val msg = "Not ready: node=${isNodeInstalled()}, st=${isSillyTavernInstalled()}"

@@ -180,16 +180,10 @@ class LauncherActivity : AppCompatActivity() {
                     nodeManager.ensureConfig()
                     nodeManager.fixCorruptedDataDir()
                 }
-                val startError = withContext(Dispatchers.IO) {
-                    nodeManager.startServer()
-                }
-                if (startError != null) {
-                    showState(State.ERROR)
-                    runOnUiThread {
-                        subtitleText.text = "启动失败:\n$startError"
-                    }
-                    return@launch
-                }
+                // Start Node.js in a foreground service, not in this Activity.
+                // The service keeps the server alive after the Activity closes
+                // and its watchdog can restart the process if it crashes.
+                NodeService.start(this@LauncherActivity)
 
                 // Step 5: Wait for server to be ready
                 showState(State.CHECKING)
@@ -214,30 +208,22 @@ class LauncherActivity : AppCompatActivity() {
                 openMain()
                 return
             }
-            // Show live output while waiting
-            val liveOutput = nodeManager.getProcessOutput()
-            if (liveOutput.isNotBlank()) {
-                val lastLine = liveOutput.lines().lastOrNull { it.isNotBlank() } ?: ""
-                runOnUiThread { subtitleText.text = "等待服务启动...\n$lastLine" }
+
+            // The service owns the process and exposes startup failures.
+            val failure = NodeService.lastStartError
+            if (failure != null) {
+                showState(State.ERROR)
+                subtitleText.text = "Không thể khởi động máy chủ:\n$failure"
+                return
             }
-            // Check if process died
-            if (!nodeManager.isProcessAlive()) {
+            if (!NodeService.isStarting && !NodeService.isRunning && checkAttempts > 10) {
                 break
             }
             checkAttempts++
             delay(1000)
         }
         showState(State.NOT_RUNNING)
-        val fullOutput = nodeManager.getProcessOutput()
-        val alive = nodeManager.isProcessAlive()
-        // Show last 30 lines which contain the actual error
-        val output = fullOutput.lines().takeLast(30).joinToString("\n")
-        val reason = if (output.isNotBlank()) {
-            "进程${if (alive) "运行中但未响应" else "已退出"}:\n$output"
-        } else {
-            "进程${if (alive) "运行中但无输出" else "未启动"}"
-        }
-        runOnUiThread { subtitleText.text = reason }
+        subtitleText.text = "Máy chủ SillyTavern chưa phản hồi. Hãy thử khởi động lại."
     }
 
     // ========================= V1: Termux Mode =========================
