@@ -552,6 +552,14 @@ class LauncherActivity : AppCompatActivity() {
                     btnSettings.visibility = View.VISIBLE
                 }
             }
+            // The visible text changes between Start, Restart and Retry.
+            // Keep TalkBack's name synchronized with the actual action.
+            btnStart.contentDescription = when (state) {
+                State.ERROR -> "Thử lại khởi động SillyTavern"
+                State.NOT_RUNNING -> if (isV2Mode)
+                    "Khởi động lại máy chủ SillyTavern" else "Mở SillyTavern"
+                else -> "Khởi động SillyTavern"
+            }
         }
     }
 }
