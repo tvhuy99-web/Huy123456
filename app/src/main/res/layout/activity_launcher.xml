@@ -10,6 +10,7 @@
     <!-- App Icon / Logo -->
     <TextView
         android:id="@+id/text_logo"
+        android:importantForAccessibility="no"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="🍺"
@@ -37,6 +38,7 @@
     <!-- Status Text -->
     <TextView
         android:id="@+id/text_status"
+        android:accessibilityLiveRegion="polite"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
@@ -50,6 +52,7 @@
 
     <TextView
         android:id="@+id/text_subtitle"
+        android:accessibilityLiveRegion="polite"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -66,6 +69,7 @@
     <!-- Progress Bar -->
     <ProgressBar
         android:id="@+id/progress_bar"
+        android:importantForAccessibility="no"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginTop="16dp"
@@ -80,6 +84,7 @@
     <!-- Primary: Start Server -->
     <Button
         android:id="@+id/btn_start"
+        android:contentDescription="Khởi động SillyTavern"
         android:layout_width="0dp"
         android:layout_height="56dp"
         android:layout_marginTop="32dp"
@@ -97,6 +102,7 @@
     <!-- Data Management Row -->
     <Button
         android:id="@+id/btn_export"
+        android:contentDescription="Xuất bản sao lưu dữ liệu"
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="0dp"
         android:layout_height="48dp"
@@ -114,6 +120,7 @@
 
     <Button
         android:id="@+id/btn_import"
+        android:contentDescription="Khôi phục dữ liệu đã sao lưu"
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="0dp"
         android:layout_height="48dp"
@@ -132,6 +139,7 @@
     <!-- V1 Termux button (hidden in V2 mode) -->
     <Button
         android:id="@+id/btn_open_termux"
+        android:contentDescription="Mở Termux"
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="0dp"
         android:layout_height="48dp"
@@ -149,6 +157,7 @@
 
     <Button
         android:id="@+id/btn_retry"
+        android:contentDescription="Kiểm tra lại kết nối"
         style="@style/Widget.Material3.Button.TextButton"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
@@ -164,6 +173,7 @@
 
     <Button
         android:id="@+id/btn_settings"
+        android:contentDescription="Mở cài đặt"
         style="@style/Widget.Material3.Button.TextButton"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
