@@ -20,12 +20,32 @@ android {
         }
     }
 
+    // Stable PUBLIC debug key used by Card Studio. Not a release key.
+    // In CI, each build is signed identically so all future preview APKs can
+    // be installed as updates without needing to uninstall the app again.
+    val stableDebugKeyStore = System.getenv("STABLE_DEBUG_KEYSTORE")
+    if (!stableDebugKeyStore.isNullOrBlank()) {
+        signingConfigs {
+            create("stableDebug") {
+                storeFile = file(stableDebugKeyStore)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         // Isolated preview install: does NOT overwrite the existing app,
         // because GitHub's temporary debug keystore is not the user's key.
         debug {
             applicationIdSuffix = ".preview"
             versionNameSuffix = "-debug"
+            if (!stableDebugKeyStore.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("stableDebug")
+            }
         }
         release {
             isMinifyEnabled = false
