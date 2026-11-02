@@ -102,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser(description="Package SillyTavern for Android")
     parser.add_argument("--repo", default="SillyTavern/SillyTavern",
                         help="GitHub repo (default: SillyTavern/SillyTavern)")
-    parser.add_argument("--branch", default="release",
+    parser.add_argument("--branch", default="1.19.0",
                         help="Git branch (default: release)")
     parser.add_argument("--local", type=str, default=None,
                         help="Use local SillyTavern directory instead of cloning")
