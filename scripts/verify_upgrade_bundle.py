@@ -3,6 +3,9 @@
 import json
 import struct
 import zipfile
+import re
+import subprocess
+import tempfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
@@ -36,7 +39,40 @@ with zipfile.ZipFile(libs_zip) as archive:
     libraries = archive.namelist()
     if len(libraries) < 4:
         raise SystemExit("Not enough bundled Node.js Android libraries")
+    if "libffi.so" not in libraries:
+        raise SystemExit("libffi.so missing: Node.js will fail to start on Android")
+    # Check the actual DT_NEEDED dependencies of Node and bundled libraries.
+    # This catches libffi and future Termux dependency changes *before* APK
+    # compilation, instead of discovering them from the on-device error screen.
+    android_system = {
+        "libc.so", "libm.so", "libdl.so", "liblog.so", "libandroid.so",
+        "libz.so", "libstdc++.so", "libEGL.so", "libGLESv2.so",
+        "libjnigraphics.so", "libvulkan.so", "libmediandk.so",
+    }
+    supplied = set(libraries)
+    with tempfile.TemporaryDirectory() as tmp:
+        missing = {}
+        inputs = [binary]
+        for name in libraries:
+            if not name.endswith(".so") and ".so." not in name:
+                continue
+            dest = Path(tmp) / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(archive.read(name))
+            inputs.append(dest)
+        for target in inputs:
+            result = subprocess.run(
+                ["readelf", "-d", str(target)],
+                text=True, capture_output=True, check=True,
+            )
+            needed = re.findall(r"\\(NEEDED\\).*?\\[(.*?)\\]", result.stdout)
+            unknown = sorted(set(needed) - supplied - android_system)
+            if unknown:
+                missing[target.name] = unknown
+        if missing:
+            raise SystemExit(f"Missing Android native DT_NEEDED libraries: {missing}")
     print(f"Bundled Android Node.js libraries: {len(libraries)}")
+    print("ELF dynamic dependency closure: OK (including libffi.so)")
 
 print(f"AArch64 Node.js binary: {binary.stat().st_size / 1024**2:.1f} MiB")
 print("Preview bundle verified. Note: native tokenizer compatibility needs real-device testing.")
