@@ -9,11 +9,8 @@ on:
 permissions:
   contents: read
 
-# Only the newest build from this branch is needed.
-concurrency:
-  group: sillytavern-1190-preview-${{ github.ref }}
-  cancel-in-progress: true
-
+# The GitHub Actions preview build deliberately runs independently:
+# a cancelled asset packaging job can take minutes to shut down.
 jobs:
   android-preview:
     name: Build isolated SillyTavern 1.19.0 APK
