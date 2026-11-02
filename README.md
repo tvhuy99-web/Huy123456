@@ -110,6 +110,21 @@ Node.js is not officially supported on Android. The most reliable way to get a w
 
 ## Troubleshooting
 
+### Custom OpenAI-compatible API endpoints on Android
+
+Enter the API **base URL**, usually ending in `/v1`. For example, use
+`https://gcli.ggchan.dev/v1`, **not**
+`https://gcli.ggchan.dev/v1/chat/completions`: SillyTavern appends
+`/chat/completions` automatically.
+
+The embedded Node.js receives Android's trusted certificate authorities via
+`NODE_EXTRA_CA_CERTS` at startup, while normal HTTPS certificate verification
+remains enabled. This improves compatibility with certificate chains trusted by
+Android. If an API server has a broken or untrusted certificate chain, its
+operator must repair it; the app does **not** disable TLS verification and
+cannot guarantee compatibility with every provider.
+
+
 <details>
 <summary><b>npm ci hangs during setup_assets.py</b></summary>
 

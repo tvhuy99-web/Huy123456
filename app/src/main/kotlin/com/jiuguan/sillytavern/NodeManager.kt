@@ -2,6 +2,10 @@ package com.jiuguan.sillytavern
 
 import android.content.Context
 import android.util.Log
+import android.util.Base64
+import java.security.KeyStore
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.*
@@ -437,17 +441,57 @@ class NodeManager(private val context: Context) {
         }
     }
 
-    /** Build environment variables for Node.js process */
+    /**
+     * Share Android's trusted certificate authorities with the bundled Node.js.
+     * NODE_EXTRA_CA_CERTS extends Node's built-in roots, without disabling TLS
+     * verification or trusting an arbitrary remote certificate.
+     */
+    private fun androidTrustBundle(): File? {
+        return try {
+            val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+            factory.init(null as KeyStore?)
+            val roots = factory.trustManagers
+                .filterIsInstance<X509TrustManager>()
+                .flatMap { it.acceptedIssuers.toList() }
+                .distinctBy { Base64.encodeToString(it.encoded, Base64.NO_WRAP) }
+            if (roots.isEmpty()) return null
+
+            val bundle = File(baseDir, "android-trusted-cas.pem")
+            val temp = File(baseDir, "android-trusted-cas.pem.tmp")
+            val pem = buildString {
+                for (cert in roots) {
+                    append("-----BEGIN CERTIFICATE-----\n")
+                    append(Base64.encodeToString(cert.encoded, Base64.NO_WRAP)
+                        .chunked(64).joinToString("\n"))
+                    append("\n-----END CERTIFICATE-----\n")
+                }
+            }
+            temp.writeText(pem)
+            if (!temp.renameTo(bundle)) {
+                bundle.writeText(pem)
+                temp.delete()
+            }
+            Log.i(TAG, "Added ${roots.size} Android-trusted CAs for Node.js TLS")
+            bundle
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot export Android trust store; Node.js will use its built-in CAs", e)
+            null
+        }
+    }
+
+    /** Build environment variables for Node.js process. */
     private fun buildEnvironment(): Map<String, String> {
         val nativeLibDir = context.applicationInfo.nativeLibraryDir
         val libsDir = nodeLibsDir.absolutePath
-        return mapOf(
+        val env = mutableMapOf(
             "HOME" to baseDir.absolutePath,
             "TMPDIR" to context.cacheDir.absolutePath,
             "NODE_ENV" to "production",
             "PATH" to "$nativeLibDir:/system/bin:/system/xbin",
             "LD_LIBRARY_PATH" to "$libsDir:$nativeLibDir"
         )
+        androidTrustBundle()?.let { env["NODE_EXTRA_CA_CERTS"] = it.absolutePath }
+        return env
     }
 
     /** Extract a ZIP stream to a target directory */
@@ -461,7 +505,8 @@ class NodeManager(private val context: Context) {
                 val outFile = File(targetDir, entryName)
 
                 // Security: prevent zip slip
-                if (!outFile.canonicalPath.startsWith(targetDir.canonicalPath)) {
+                val canonicalRootPrefix = targetDir.canonicalPath + File.separator
+                if (!outFile.canonicalPath.startsWith(canonicalRootPrefix)) {
                     Log.w(TAG, "Skipping zip entry outside target: ${entry.name}")
                     zis.closeEntry()
                     entry = zis.nextEntry

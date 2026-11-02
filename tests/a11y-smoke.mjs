@@ -25,6 +25,9 @@ class FakeElement {
       q=q.trim();
       if (q === 'button') return this.tagName === 'BUTTON';
       if (q === 'input') return this.tagName === 'INPUT';
+      if (q === 'textarea') return this.tagName === 'TEXTAREA';
+      if (q === 'select') return this.tagName === 'SELECT';
+      if (q === 'input:not([type="hidden"])') return this.tagName === 'INPUT';
       if (q === 'a') return this.tagName === 'A';
       if (q === 'img') return this.tagName === 'IMG';
       if (q.startsWith('img[')) return this.tagName === 'IMG' && !!this.getAttribute('alt');
@@ -52,6 +55,8 @@ class FakeElement {
 
 const send = new FakeElement('div',{id:'send_but',classes:['interactable','fa-solid','fa-paper-plane']});
 const options = new FakeElement('div',{id:'options_button',classes:['interactable','fa-solid','fa-bars']});
+const composer = new FakeElement('textarea',{id:'send_textarea'});
+const filter = new FakeElement('input',{id:'unlabeled_filter'});
 const native = new FakeElement('button',{text:'Lưu cài đặt'});
 const icon = new FakeElement('i',{classes:['fa-solid','fa-save']});
 native.append(icon);
@@ -63,14 +68,14 @@ const decorative = new FakeElement('img',{alt:''});
 const meaningful = new FakeElement('img',{alt:'Hình nhân vật'});
 const imageControl = new FakeElement('div',{id:'customImageButton',classes:['menu_button']});
 imageControl.append(new FakeElement('img',{alt:'Mở bộ sưu tập'}));
-const elements=[send,options,native,copyMessage,previousSwipe,chatEntry,decorative,meaningful,imageControl];
+const elements=[send,options,composer,filter,native,copyMessage,previousSwipe,chatEntry,decorative,meaningful,imageControl];
 const listeners={};
 const document = {
   body:{},
   documentElement:{},
   getElementById: id => elements.find(el=>el.id===id) || null,
   querySelectorAll: selector => {
-    if(selector.startsWith('button,')) return [send,options,native,copyMessage,previousSwipe,chatEntry,imageControl];
+    if(selector.startsWith('button,')) return [send,options,composer,filter,native,copyMessage,previousSwipe,chatEntry,imageControl];
     if(selector.startsWith('img,i.fa')) return [decorative,meaningful,icon,...imageControl.children];
     return [];
   },
@@ -90,6 +95,10 @@ assert.equal(send.getAttribute('aria-label'),'Gửi tin nhắn');
 assert.equal(send.getAttribute('role'),'button');
 assert.equal(send.getAttribute('tabindex'),'0');
 assert.equal(options.getAttribute('aria-label'),'Mở tùy chọn trò chuyện');
+assert.equal(composer.getAttribute('aria-label'),'Nhập tin nhắn');
+assert.equal(composer.getAttribute('role'),null,'textarea must retain native semantics');
+assert.equal(composer.getAttribute('tabindex'),null,'textarea must not get artificial tab ordering');
+assert.equal(filter.getAttribute('role'),null,'text input must not become a button');
 assert.equal(copyMessage.getAttribute('aria-label'),'Sao chép tin nhắn');
 assert.equal(copyMessage.getAttribute('role'),'button');
 assert.equal(previousSwipe.getAttribute('aria-label'),'Xem phản hồi trước');
@@ -104,6 +113,10 @@ assert.equal(imageControl.getAttribute('aria-label'),'Mở bộ sưu tập');
 assert.equal(imageControl.children[0].getAttribute('alt'),'','duplicate image label removed');
 assert.equal(imageControl.children[0].getAttribute('aria-hidden'),'true');
 assert.ok(observer,'dynamic dialogs and buttons must be watched');
+chatEntry.children[0].textContent = 'Cuộc trò chuyện B';
+observer.cb();
+assert.equal(chatEntry.getAttribute('aria-label'),'Mở cuộc trò chuyện: Cuộc trò chuyện B',
+  'dynamic chat labels must refresh');
 assert.ok(typeof listeners.keydown==='function','keyboard activation should work');
 
 const evt={key:'Enter',target:send,preventDefault(){this.prevented=true;}};

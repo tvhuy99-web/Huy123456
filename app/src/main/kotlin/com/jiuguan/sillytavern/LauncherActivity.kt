@@ -421,6 +421,11 @@ class LauncherActivity : AppCompatActivity() {
 
                                 if (relativePath.isNotEmpty()) {
                                     val outFile = File(dataDir, relativePath)
+                                    // Reject ZIP entries that escape the user-data directory.
+                                    val canonicalRootPrefix = dataDir.canonicalPath + File.separator
+                                    if (!outFile.canonicalPath.startsWith(canonicalRootPrefix)) {
+                                        throw IOException("Unsafe backup path: ${entry.name}")
+                                    }
                                     if (entry.isDirectory) {
                                         outFile.mkdirs()
                                     } else {

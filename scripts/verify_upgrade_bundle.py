@@ -65,7 +65,9 @@ with zipfile.ZipFile(libs_zip) as archive:
                 ["readelf", "-d", str(target)],
                 text=True, capture_output=True, check=True,
             )
-            needed = re.findall(r"\\(NEEDED\\).*?\\[(.*?)\\]", result.stdout)
+            needed = re.findall(r"\(NEEDED\).*?\[([^\]]+)\]", result.stdout)
+            if target == binary and not needed:
+                raise SystemExit("No DT_NEEDED libraries detected for Node.js; check readelf parsing")
             unknown = sorted(set(needed) - supplied - android_system)
             if unknown:
                 missing[target.name] = unknown
