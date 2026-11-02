@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Only the newest build from this branch is needed.
+concurrency:
+  group: sillytavern-1190-preview-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-preview:
     name: Build isolated SillyTavern 1.19.0 APK
@@ -55,7 +60,7 @@ jobs:
           python scripts/setup_assets.py --st-branch 1.19.0
           python scripts/verify_upgrade_bundle.py
 
-      - name: Configure fixed debug signing key (same public cert as Card Studio)
+      - name: Configure Huy123456-specific stable debug signing key
         shell: bash
         run: |
           set -euo pipefail
@@ -77,7 +82,7 @@ jobs:
           test -s "$SRC"
           cp "$SRC" "$DEST"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$DEST" | tee "$RUNNER_TEMP/apksigner-verification.txt"
-          EXPECTED="85e27156c4557de4f35b6ebe771dd426f108182894219ff3b6dbed607a230c95"
+          EXPECTED="ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699"
           ACTUAL="$(awk -F': ' '/certificate SHA-256 digest:/ {print $NF; exit}' "$RUNNER_TEMP/apksigner-verification.txt" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Unexpected APK signer. Refusing to publish."; exit 1
@@ -89,7 +94,7 @@ jobs:
           SillyTavern source: official tag 1.19.0
           Android app ID suffix: .preview (installs alongside current app)
           Local server: http://127.0.0.1:8001
-          Signing: FIXED public Card Studio debug cert SHA256 85e27156c4557de4f35b6ebe771dd426f108182894219ff3b6dbed607a230c95
+          Signing: FIXED independent Huy123456 debug cert SHA256 ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699
           Note: previous preview APK used random GitHub debug key. Back up and uninstall only old preview before first fixed-key install.
           Native libraries: Termux libffi.so and DT_NEEDED closure verified before Gradle build.
           Data: isolated from existing app; import a copy of exported backup if needed
