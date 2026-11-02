@@ -11,8 +11,8 @@ android {
         applicationId = "com.jiuguan.sillytavern.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 11900
+        versionName = "1.19.0-preview.1"
 
         ndk {
             // ARM64 covers 99%+ of modern Android phones
@@ -21,6 +21,12 @@ android {
     }
 
     buildTypes {
+        // Isolated preview install: does NOT overwrite the existing app,
+        // because GitHub's temporary debug keystore is not the user's key.
+        debug {
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
