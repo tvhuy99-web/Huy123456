@@ -196,7 +196,7 @@ def main():
         description="Prepare all assets for SillyTavern Android APK build")
     parser.add_argument("--from-termux", type=str, default=None,
                         help="Path to node-android-arm64.zip from Termux export (optional)")
-    parser.add_argument("--st-branch", default="release",
+    parser.add_argument("--st-branch", default="1.19.0",
                         help="SillyTavern git branch (default: release)")
     parser.add_argument("--st-repo", default="SillyTavern/SillyTavern",
                         help="SillyTavern GitHub repo")
