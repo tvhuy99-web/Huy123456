@@ -55,6 +55,15 @@ jobs:
           python scripts/setup_assets.py --st-branch 1.19.0
           python scripts/verify_upgrade_bundle.py
 
+      - name: Configure fixed debug signing key (same public cert as Card Studio)
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/sillytavern-stable-debug.jks"
+          base64 --decode .github/signing/stable-debug.keystore.b64 > "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass android -alias androiddebugkey -v > "$RUNNER_TEMP/signing-certificate.txt"
+          echo "STABLE_DEBUG_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
+
       - name: Build separate preview APK (does not overwrite installed app)
         timeout-minutes: 20
         run: gradle :app:assembleDebug --no-daemon --stacktrace
@@ -67,7 +76,12 @@ jobs:
           DEST="SillyTavern-1.19.0-Android-preview.apk"
           test -s "$SRC"
           cp "$SRC" "$DEST"
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$DEST"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$DEST" | tee "$RUNNER_TEMP/apksigner-verification.txt"
+          EXPECTED="85e27156c4557de4f35b6ebe771dd426f108182894219ff3b6dbed607a230c95"
+          ACTUAL="$(awk -F': ' '/certificate SHA-256 digest:/ {print $NF; exit}' "$RUNNER_TEMP/apksigner-verification.txt" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "Unexpected APK signer. Refusing to publish."; exit 1
+          fi
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$DEST" | grep -E '^package:|^sdkVersion:'
           sha256sum "$DEST" | tee "$DEST.sha256"
           cat > BUILD-INFO.txt <<'INFO'
@@ -75,7 +89,9 @@ jobs:
           SillyTavern source: official tag 1.19.0
           Android app ID suffix: .preview (installs alongside current app)
           Local server: http://127.0.0.1:8001
-          Signing: GitHub-hosted debug key (NOT the user's existing signature)
+          Signing: FIXED public Card Studio debug cert SHA256 85e27156c4557de4f35b6ebe771dd426f108182894219ff3b6dbed607a230c95
+          Note: previous preview APK used random GitHub debug key. Back up and uninstall only old preview before first fixed-key install.
+          Native libraries: Termux libffi.so and DT_NEEDED closure verified before Gradle build.
           Data: isolated from existing app; import a copy of exported backup if needed
           Caveat: Android native tokenizer stubs may reduce token-count accuracy.
           INFO
