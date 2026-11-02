@@ -213,6 +213,8 @@
     if (el.getAttribute(attr) !== value) el.setAttribute(attr, value);
   }
   function contextLabel(el) {
+    if (el.matches('.swipe_left,.mes_img_swipe_left')) return 'Xem phản hồi trước';
+    if (el.matches('.swipe_right,.mes_img_swipe_right')) return 'Xem phản hồi tiếp theo';
     if (el.matches('.character_select')) {
       const name = clean(el.querySelector('.ch_name')?.textContent);
       if (name) return 'Chọn nhân vật: ' + name;
