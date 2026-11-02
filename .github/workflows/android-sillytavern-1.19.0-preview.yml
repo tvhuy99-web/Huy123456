@@ -44,6 +44,11 @@ jobs:
         with:
           gradle-version: '8.5'
 
+      - name: Test TalkBack labels and decorative controls
+        run: |
+          node --check app/src/main/assets/st-accessibility.js
+          node tests/a11y-smoke.mjs
+
       - name: Install Android SDK 34
         run: |
           set -euo pipefail
