@@ -44,6 +44,7 @@ REQUIRED_PACKAGES = [
     "libngtcp2",
     "brotli",
     "libsqlite",
+    "libffi",
     "libandroid-posix-semaphore",
     "libicu",
 ]
@@ -62,6 +63,7 @@ WANTED_LIBS = [
     "libbrotlidec.so",
     "libbrotlienc.so",
     "libsqlite3.so",
+    "libffi.so",
     "libandroid-posix-semaphore.so",
     "libicudata.so",
     "libicui18n.so",
