@@ -17,6 +17,8 @@ object DiagnosticStore {
     private const val MEMORY_LIMIT = 220
     private const val PERSISTED_LIMIT = 45
     private val entries = ArrayDeque<JSONObject>()
+    // Critical errors survive when noisy informational logs fill the ring.
+    private val important = ArrayDeque<JSONObject>()
     private var loaded = false
 
     private val redactions = listOf(
@@ -48,9 +50,11 @@ object DiagnosticStore {
             for (i in 0 until arr.length()) {
                 val item = arr.optJSONObject(i) ?: continue
                 entries.addLast(item)
+                important.addLast(item)
             }
         } catch (_: Exception) {
             entries.clear()
+            important.clear()
         }
     }
 
@@ -70,11 +74,11 @@ object DiagnosticStore {
         entries.addLast(item)
         while (entries.size > MEMORY_LIMIT) entries.removeFirst()
         if (safeLevel == "error" || safeLevel == "warn") {
+            important.addLast(item)
+            while (important.size > PERSISTED_LIMIT) important.removeFirst()
             try {
                 val persistent = JSONArray()
-                entries.filter { it.optString("level") in listOf("error", "warn") }
-                    .takeLast(PERSISTED_LIMIT)
-                    .forEach { persistent.put(it) }
+                important.forEach { persistent.put(it) }
                 context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit().putString(SAVED, persistent.toString()).apply()
             } catch (_: Exception) {
@@ -87,13 +91,19 @@ object DiagnosticStore {
     fun snapshot(context: Context): String {
         load(context.applicationContext)
         val arr = JSONArray()
-        entries.forEach(arr::put)
+        val seen = HashSet<String>()
+        (important.toList() + entries.toList())
+            .sortedBy { it.optLong("timestamp") }
+            .forEach { item ->
+                if (seen.add(item.toString())) arr.put(item)
+            }
         return arr.toString()
     }
 
     @Synchronized
     fun clear(context: Context) {
         entries.clear()
+        important.clear()
         loaded = true
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().remove(SAVED).apply()
