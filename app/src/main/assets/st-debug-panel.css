@@ -313,3 +313,35 @@
     #st-debug-panel .st-db-view { padding: 7px; }
     #st-debug-panel .st-db-tools button { font-size: 11px; }
 }
+
+
+/* Expanded root-cause metadata is optional and TalkBack accessible. */
+#st-debug-panel .st-db-log-details {
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin: 5px 0 0;
+    padding: 6px 8px;
+    border: 1px solid #334155;
+    border-radius: 7px;
+    background: #111827;
+    color: #e2e8f0;
+}
+#st-debug-panel .st-db-log-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #93c5fd;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+}
+#st-debug-panel .st-db-log-details pre {
+    max-height: 300px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+    color: #cbd5e1;
+    margin: 6px 0 0;
+    padding: 8px;
+    border-top: 1px solid #334155;
+}

@@ -122,9 +122,18 @@ class MainActivity : AppCompatActivity() {
                 error: WebResourceError?
             ) {
                 super.onReceivedError(view, request, error)
+                val failedUrl = request?.url?.toString() ?: ""
+                val errorCode = error?.errorCode ?: -1
                 DiagnosticStore.record(applicationContext, "error", "webview",
-                    error?.description?.toString() ?: "Không tải được tài nguyên",
-                    request?.url?.toString() ?: "")
+                    "Lỗi tải tài nguyên (mã " + errorCode + "): " +
+                        (error?.description?.toString() ?: "Không có mô tả từ WebView"),
+                    failedUrl,
+                    org.json.JSONObject()
+                        .put("url", failedUrl)
+                        .put("method", request?.method ?: "không rõ")
+                        .put("errorCode", errorCode)
+                        .put("mainFrame", request?.isForMainFrame ?: false)
+                        .put("resourceType", resourceTypeFromUrl(failedUrl)))
                 if (request?.isForMainFrame == true) {
                     // Server might have stopped, show error
                     view?.loadData(
@@ -141,8 +150,17 @@ class MainActivity : AppCompatActivity() {
                 super.onReceivedHttpError(view, request, response)
                 val status = response?.statusCode ?: 0
                 if (status >= 400) {
+                    val failedUrl = request?.url?.toString() ?: ""
                     DiagnosticStore.record(applicationContext, "warn", "http",
-                        "HTTP " + status, request?.url?.toString() ?: "")
+                        "HTTP " + status + " " +
+                            (response?.reasonPhrase ?: "Không rõ nguyên nhân"),
+                        failedUrl,
+                        org.json.JSONObject()
+                            .put("url", failedUrl)
+                            .put("httpStatus", status)
+                            .put("method", request?.method ?: "không rõ")
+                            .put("mainFrame", request?.isForMainFrame ?: false)
+                            .put("resourceType", resourceTypeFromUrl(failedUrl)))
                 }
             }
 
@@ -348,6 +366,27 @@ class MainActivity : AppCompatActivity() {
             DiagnosticStore.record(applicationContext, "error", "android",
                 "Không thể khởi tạo bảng gỡ lỗi: " + (error.message ?: ""), "MainActivity")
             android.util.Log.e("DebugPanel", "Cannot inject debug panel", error)
+        }
+    }
+
+    // WebView does not expose the DOM element in its network callbacks.
+    // Keep the actual URL and HTTP/error codes; JS resource errors supply
+    // the original HTML attribute and element id/class when available.
+    private fun resourceTypeFromUrl(url: String): String {
+        val path = try { Uri.parse(url).path?.lowercase() ?: "" }
+            catch (_: Exception) { "" }
+        return when {
+            path.endsWith(".js") || path.endsWith(".mjs") -> "JavaScript"
+            path.endsWith(".css") -> "CSS"
+            path.endsWith(".png") || path.endsWith(".jpg") ||
+                path.endsWith(".jpeg") || path.endsWith(".webp") ||
+                path.endsWith(".gif") || path.endsWith(".svg") -> "Hình ảnh"
+            path.endsWith(".woff") || path.endsWith(".woff2") ||
+                path.endsWith(".ttf") -> "Phông chữ"
+            path.endsWith(".mp3") || path.endsWith(".wav") ||
+                path.endsWith(".ogg") -> "Âm thanh"
+            path.endsWith(".mp4") || path.endsWith(".webm") -> "Video"
+            else -> "Không xác định (WebView)"
         }
     }
 

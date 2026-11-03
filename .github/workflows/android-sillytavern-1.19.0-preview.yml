@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - upgrade/sillytavern-1.19.0
 
 permissions:
