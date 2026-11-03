@@ -154,6 +154,7 @@ with sync_playwright() as playwright:
     assert page.locator('#st-db-tab-prompts').count()==1
     assert page.locator('#st-db-tab-raw').count()==1
     assert page.get_by_text('Lỗi khi khởi động giao diện').is_visible()
+    page.screenshot(path=str(ROOT/'debug-console-preview.png'))
     page.get_by_role('button',name='Cảnh báo').click()
     assert page.get_by_text('Server restarted').is_visible()
     assert not page.get_by_text('Lỗi khi khởi động giao diện').count()
@@ -185,6 +186,7 @@ with sync_playwright() as playwright:
     assert '[Hình ảnh]' in page.locator('.st-db-section').nth(1).inner_text()
     assert 'data:image/png;base64' not in page.locator('#st-db-view').inner_text()
     assert 'END' in page.locator('.st-db-section').nth(2).inner_text()
+    page.screenshot(path=str(ROOT/'debug-prompts-preview.png'))
     page.get_by_text('Đếm độ dài').click()
     assert 'ký tự' in page.locator('#st-db-view').inner_text()
     page.get_by_role('button',name='Sao chép tất cả').click()
@@ -194,6 +196,7 @@ with sync_playwright() as playwright:
     assert '{"delta":"A"}' in page.locator('#st-db-view').inner_text()
     assert '{"delta":"B"}' in page.locator('#st-db-view').inner_text()
     assert 'Hoàn tất' in page.locator('#st-db-view').inner_text()
+    page.screenshot(path=str(ROOT/'debug-raw-preview.png'))
     page.evaluate("""() => {
         window.__stDebugCapture('request',{id:'two',messages:[{role:'user',
             content:'Private sample prompt'}],model:'my-model'});

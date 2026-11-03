@@ -123,6 +123,9 @@ jobs:
             SillyTavern-1.19.0-Android-preview.apk
             SillyTavern-1.19.0-Android-preview.apk.sha256
             BUILD-INFO.txt
+            debug-console-preview.png
+            debug-prompts-preview.png
+            debug-raw-preview.png
           compression-level: 0
           if-no-files-found: error
           retention-days: 14
