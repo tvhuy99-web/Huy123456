@@ -166,11 +166,31 @@
         chat.before(tabs);
 
         let scriptApi = null;
+        let groupApi = null;
         let selectedView = 'chat';
         let nativeActionsPending = false;
         let longPressed = false;
         let pressTimer = null;
         let cancelledClickTimer = null;
+        // Leave native group cards in place. They use a separate
+        // selection and editing path from individual characters.
+        const decorateGroups = () => {
+            for (const card of nativeList.querySelectorAll('.group_select')) {
+                if (card.dataset.stCsReady) continue;
+                card.dataset.stCsReady = '1';
+                card.tabIndex = 0;
+                card.setAttribute('role','button');
+                card.setAttribute('aria-label','Mở nhóm chat ' +
+                    (card.querySelector('.ch_name')?.textContent?.trim() || ''));
+                card.addEventListener('keydown',event=>{
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();card.click();
+                    }
+                });
+            }
+        };
+        decorateGroups();
+        new MutationObserver(decorateGroups).observe(nativeList,{childList:true});
 
         function isDrawerClosed() {
             return originalPanel.classList.contains('closedDrawer') &&
@@ -188,8 +208,9 @@
             if (ch !== undefined && ch !== null && scriptApi.characters?.[ch]) {
                 return scriptApi.characters[ch].name || '';
             }
-            if (scriptApi.selected_group) {
-                return document.querySelector('#rm_button_selected_ch h2')?.textContent?.trim() || 'Nhóm chat';
+            if (groupApi?.selected_group) {
+                const group = groupApi.groups?.find(item => String(item.id) === String(groupApi.selected_group));
+                return group?.name || document.querySelector('#rm_button_selected_ch h2')?.textContent?.trim() || 'Nhóm chat';
             }
             return '';
         }
@@ -311,8 +332,10 @@
         import(moduleUrl).then(api => {
             scriptApi = api;
             syncSelected();
-            if (tabs.hidden) return;
-            setView('chat',{fromCard:true});
+            if (!tabs.hidden) setView('chat',{fromCard:true});
+            import(new URL('scripts/group-chats.js',document.baseURI).href)
+                .then(group=>{groupApi=group;syncSelected();})
+                .catch(error=>console.warn('[Character Studio] Group state unavailable',error));
             api.eventSource.on(api.event_types.CHAT_CHANGED,()=>{
                 if (!nativeActionsPending) setView('chat',{fromCard:true});
             });
@@ -320,6 +343,7 @@
                 setTimeout(syncSelected,0);
             });
             api.eventSource.on(api.event_types.APP_READY,()=>syncSelected());
+            setTimeout(syncSelected,500);
         }).catch(error=>console.error('[Character Studio] Native events unavailable',error));
     }
 

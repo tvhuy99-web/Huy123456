@@ -112,6 +112,7 @@ class MainActivity : AppCompatActivity() {
                 injectMobileOptimizations(view)
                 injectAndroidAccessibility(view)
                 injectPresetStudio(view)
+                injectCharacterStudio(view)
             }
 
             override fun onReceivedError(
@@ -272,6 +273,27 @@ class MainActivity : AppCompatActivity() {
             view.evaluateJavascript(styleJs + "\n" + script + "\n" + features, null)
         } catch (error: Exception) {
             android.util.Log.e("PresetStudio", "Unable to inject Preset Studio", error)
+        }
+    }
+
+    // Native-backed Character Studio. Never clones chat or editor controls.
+    private fun injectCharacterStudio(view: WebView?) {
+        view ?: return
+        try {
+            val css = assets.open("st-character-studio.css")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val js = assets.open("st-character-studio.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val styleCode = "(function() {" +
+                "if (document.getElementById('st-character-studio-style')) return;" +
+                "var style = document.createElement('style');" +
+                "style.id = 'st-character-studio-style';" +
+                "style.textContent = " + org.json.JSONObject.quote(css) + ";" +
+                "document.head.appendChild(style);" +
+                "})();"
+            view.evaluateJavascript(styleCode + "\n" + js, null)
+        } catch (error: Exception) {
+            android.util.Log.e("CharacterStudio", "Unable to load character studio", error)
         }
     }
 

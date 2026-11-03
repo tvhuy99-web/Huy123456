@@ -1,0 +1,99 @@
+/*
+ * Android Character Studio 1.19.0. The underlying SillyTavern
+ * character list, editor, chats and extension hooks are unchanged.
+ */
+#rm_characters_block.st-cs-enabled #rm_button_bar > #rm_button_create,
+#rm_characters_block.st-cs-enabled #rm_button_bar > #character_import_button,
+#rm_characters_block.st-cs-enabled #rm_button_bar > #external_import_button,
+#rm_characters_block.st-cs-enabled #rm_button_bar > #rm_button_group_chats,
+#rm_characters_block.st-cs-enabled #rm_button_bar > #rm_button_search,
+#rm_characters_block.st-cs-enabled #charListGridToggle,
+#rm_characters_block.st-cs-enabled #bulkEditButton {display:none!important}
+/* Keep third-party extension controls and bulk action controls visible. */
+#rm_characters_block.st-cs-enabled #rm_buttons_container {
+    display:flex!important;flex-wrap:wrap;gap:8px;
+}
+#rm_characters_block.st-cs-enabled #st-character-toolbar {
+    display:flex;flex-direction:column;gap:10px;
+    padding:12px 10px;margin:0 0 10px;
+    border-bottom:1px solid #334155;
+    color:#e2e8f0;
+}
+#rm_characters_block.st-cs-enabled #st-character-toolbar h2 {
+    font-size:20px;margin:0;line-height:1.4;color:#f1f5f9;
+}
+#rm_characters_block.st-cs-enabled #st-character-toolbar .st-cs-label {
+    font-size:14px;font-weight:600;color:#cbd5e1;
+}
+#rm_characters_block.st-cs-enabled #st-character-toolbar #character_sort_order,
+#rm_characters_block.st-cs-enabled #st-character-toolbar #character_search_bar,
+#rm_characters_block.st-cs-enabled #st-character-toolbar #st-cs-more {
+    display:block!important;box-sizing:border-box;
+    min-height:44px;width:100%;max-width:100%;margin:0;
+    padding:10px 12px;font-size:15px;
+    color:#f1f5f9;background:#1e293b;
+    border:1px solid #475569;border-radius:10px;
+}
+#rm_characters_block.st-cs-enabled #st-character-toolbar #form_character_search_form {
+    display:block!important;margin:0!important;
+    width:100%!important;position:static!important;
+}
+#rm_characters_block.st-cs-enabled #rm_print_characters_block .character_select,
+#rm_characters_block.st-cs-enabled #rm_print_characters_block .group_select {
+    max-width:100%;min-height:70px;margin:5px 4px 10px;
+    border:1px solid #334155;border-radius:12px;
+    background:#0f172a;padding:10px;
+    box-sizing:border-box;cursor:pointer;
+}
+#rm_characters_block.st-cs-enabled #rm_print_characters_block .ch_name {
+    color:#e2e8f0;font-weight:650;font-size:16px;
+    overflow-wrap:anywhere;
+}
+#rm_characters_block.st-cs-enabled #rm_print_characters_block .character_select:focus-visible,
+#rm_characters_block.st-cs-enabled #rm_print_characters_block .group_select:focus-visible,
+#rm_characters_block.st-cs-enabled #st-character-toolbar :focus-visible {
+    outline:2px solid #38bdf8;outline-offset:2px;
+}
+#rm_characters_block.st-cs-enabled #rm_print_characters_block .ch_description {
+    display:none!important;
+}
+#st-character-tabs[hidden] {display:none!important}
+#st-character-tabs {
+    flex:0 0 auto;display:block;width:100%;
+    margin:0;padding:10px 12px 8px;
+    box-sizing:border-box;border-bottom:1px solid #334155;
+    color:#e2e8f0;background:rgba(15,23,42,.94);
+}
+#st-character-tabs #st-cs-active-name {
+    margin:0 0 7px;font-size:18px;font-weight:650;
+    overflow-wrap:anywhere;
+}
+#st-character-tabs .st-cs-tab-row {display:flex;gap:8px}
+#st-character-tabs .st-cs-tab-row button {
+    flex:1;min-height:44px;padding:8px 12px;
+    background:#1e293b;color:#e2e8f0;
+    border:1px solid #334155;border-radius:10px;
+    font:inherit;font-weight:650;
+}
+#st-character-tabs .st-cs-tab-row button[aria-selected=true] {
+    border-color:#38bdf8;background:#075985;
+}
+#st-character-tabs .st-cs-tab-row button:focus-visible {
+    outline:2px solid #38bdf8;outline-offset:2px;
+}
+.st-cs-dialog {
+    position:fixed;inset:0;margin:auto;
+    width:min(94vw,520px);max-height:85vh;
+    padding:16px;overflow:auto;box-sizing:border-box;
+    border:1px solid #475569;border-radius:14px;
+    background:#0f172a;color:#e2e8f0;
+}
+.st-cs-dialog::backdrop {background:rgba(0,0,0,.72)}
+.st-cs-dialog h3 {font-size:18px;margin:0 0 12px;overflow-wrap:anywhere}
+.st-cs-dialog button {
+    display:block;width:100%;min-height:44px;
+    text-align:left;padding:9px 12px;margin:6px 0;
+    border-radius:10px;border:1px solid #334155;
+    background:#1e293b;color:#f1f5f9;font-size:15px;
+}
+.st-cs-dialog button:focus-visible {outline:2px solid #38bdf8;outline-offset:2px}
