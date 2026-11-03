@@ -69,6 +69,7 @@ jobs:
         run: |
           python -m pip install playwright
           python tests/preset-studio-browser.py
+          python tests/preset-features-browser.py
 
       - name: Configure Huy123456-specific stable debug signing key
         shell: bash
