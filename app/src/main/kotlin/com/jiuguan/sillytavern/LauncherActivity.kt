@@ -550,6 +550,8 @@ class LauncherActivity : AppCompatActivity() {
                     btnSettings.visibility = View.GONE
                 }
                 State.NOT_RUNNING -> {
+                    btnRetry.text = "Thử lại"
+                    btnRetry.contentDescription = "Thử lại"
                     statusText.text = "酒馆未启动"
                     subtitleText.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
