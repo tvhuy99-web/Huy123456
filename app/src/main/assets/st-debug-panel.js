@@ -12,7 +12,11 @@
     const MAX_TURNS = 18;
     const MAX_PROMPT = 480000;
     const MAX_RAW = 400000;
-    const MAX_LOGS = 240;
+    const MAX_CONSOLE = 200000;
+    const NORMAL_BUDGET = 159900;
+    const IMPORTANT_BUDGET = 39900;
+    const COALESCE_WINDOW_MS = 300000;
+    const hasNativeStore = () => typeof window.STAndroidDiagnostics?.recordClientEvent === 'function';
     const state = {
         logs: [], turns: [], counter: 0,
         tab: 'console', filter: 'all', search: '', logLimit: 50,
@@ -34,7 +38,7 @@
         return item;
     };
     const cut = (value, length = 2000) => String(value ?? '').slice(0, length);
-    const safeLog = value => cut(value, 2300)
+    const safeLog = value => cut(value, 12000)
         .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s,"'}]+/gi, '$1[ĐÃ ẨN]')
         .replace(/([?&](?:api_key|apikey|token|key|secret|password)=)[^&#\s]+/gi, '$1[ĐÃ ẨN]')
         .replace(/((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret)\s*[:=]\s*['"]?)[^\s,"'}]+/gi, '$1[ĐÃ ẨN]')
@@ -57,54 +61,100 @@
         user: 'Người dùng', assistant: 'Trợ lý', tool: 'Công cụ'
     };
 
-    function log(level, source, message, locationInfo) {
-        const entry = {
-            timestamp: Date.now(), level, source, message: safeLog(message),
-            location: locationInfo ? safeLog(locationInfo) : ''
+    // In the Android APK, there is one canonical native store. The JS ring
+    // is only a fallback for browsers without the native bridge.
+    const entrySize = item => JSON.stringify(item).length + 1;
+    function trimBrowserLogs() {
+        for (const [critical,budget] of [[false,NORMAL_BUDGET],[true,IMPORTANT_BUDGET]]) {
+            const selected=state.logs.filter(e=>(e.level==='warn'||e.level==='error')===critical);
+            let size=selected.reduce((sum,e)=>sum+entrySize(e),0);
+            const removed=new Set();
+            for(const item of selected) {
+                if(size<=budget) break;
+                removed.add(item);size-=entrySize(item);
+            }
+            if(removed.size) state.logs=state.logs.filter(e=>!removed.has(e));
+        }
+    }
+    function log(level,source,message,locationInfo='',details={}) {
+        const now=Date.now();
+        const item={
+            timestamp:now,firstTimestamp:now,lastTimestamp:now,
+            repeatCount:1,level,source,message:safeLog(message),
+            location:locationInfo?safeLog(locationInfo):''
         };
-        const last = state.logs[state.logs.length - 1];
-        if (last && last.source === source && last.message === entry.message &&
-            last.level === entry.level && entry.timestamp - last.timestamp < 700) return;
-        state.logs.push(entry);
-        if (state.logs.length > MAX_LOGS) state.logs.shift();
-        if (level === 'error') state.errors += 1;
-        if (root?.open && state.tab === 'console') scheduleRender();
+        for(const key of ['url','originalUrl','resourceType','element','method',
+            'httpStatus','errorCode','mainFrame','stack']) {
+            if(details[key]!=null) item[key] = typeof details[key]==='string' ?
+                safeLog(details[key]) : details[key];
+        }
+        if(hasNativeStore()){
+            try {
+                window.STAndroidDiagnostics.recordClientEvent(level,source,item.message,
+                    item.location,JSON.stringify(details));
+            }catch(_){}
+            if(root?.open && state.tab==='console') scheduleRender();
+            updateStatus();
+            return;
+        }
+        const sig=x=>[x.level,x.source,x.message,x.location,x.url,x.originalUrl,
+            x.resourceType,x.element,x.method,x.httpStatus,x.errorCode,x.mainFrame].join('\u001f');
+        const repeated=state.logs.slice().reverse().find(x=>sig(x)===sig(item) &&
+            now-(x.lastTimestamp||x.timestamp)<=COALESCE_WINDOW_MS);
+        if(repeated){
+            repeated.repeatCount=(repeated.repeatCount||1)+1;
+            repeated.timestamp=now;repeated.lastTimestamp=now;
+        }else state.logs.push(item);
+        trimBrowserLogs();
+        if(root?.open&&state.tab==='console') scheduleRender();
         updateStatus();
     }
 
-    // Browser-side failures are collected even if native diagnostics
-    // cannot be queried. Native WebChromeClient records earlier errors.
-    window.addEventListener('error', event => {
-        const target = event.target;
-        if (target && target !== window && (target.src || target.href)) {
-            log('error', 'tài nguyên', 'Tải tài nguyên thất bại: ' +
-                simplifySource(target.src || target.href));
+    window.addEventListener('error',event=>{
+        const element=event.target;
+        if(element && element!==window && (element.hasAttribute?.('src') ||
+            element.hasAttribute?.('href') || element.currentSrc || element.src || element.href)) {
+            const attr=element.hasAttribute?.('src')?'src':'href';
+            const originalUrl=element.getAttribute?.(attr)??'';
+            const url=element.currentSrc||element.src||element.href||originalUrl||'(không có URL)';
+            const type=element.tagName?.toLowerCase()||'tài nguyên';
+            const identifier=type+(element.id?'#'+element.id:'')+
+                (typeof element.className==='string'&&element.className.trim()?
+                    '.'+element.className.trim().split(/\s+/).slice(0,2).join('.'):'');
+            log('error','tài nguyên','Không tải được '+type+': '+url+
+                (originalUrl!==url?' (thuộc tính '+attr+'='+JSON.stringify(originalUrl)+')':''),
+                url,{url,originalUrl,resourceType:type,element:identifier});
             return;
         }
-        log('error', 'javascript', event.message || event.error?.message || 'Lỗi JavaScript',
-            (event.filename ? simplifySource(event.filename) + ':' + event.lineno : '') +
-            (event.error?.stack ? '\n' + cut(event.error.stack, 1400) : ''));
-    }, true);
-    window.addEventListener('unhandledrejection', event => {
-        const reason = event.reason;
-        log('error', 'promise', reason?.message || String(reason || 'Lỗi bất đồng bộ'),
-            reason?.stack || '');
+        const url=event.filename||'';
+        log('error','javascript',event.message||event.error?.message||'Lỗi JavaScript',
+            url?simplifySource(url)+':'+(event.lineno||'?')+':'+(event.colno||'?'):'',
+            {url,resourceType:'javascript',stack:event.error?.stack||''});
+    },true);
+    window.addEventListener('unhandledrejection',event=>{
+        const reason=event.reason;
+        log('error','promise',reason?.message||String(reason||'Lỗi bất đồng bộ'),
+            '',{resourceType:'promise',stack:reason?.stack||''});
     });
-    for (const method of ['error', 'warn']) {
-        const original = console[method];
-        if (typeof original !== 'function') continue;
-        console[method] = function(...args) {
-            try {
-                const message = args.map(arg => {
-                    if (arg instanceof Error) return arg.message + (arg.stack ? '\n' + arg.stack : '');
-                    if (typeof arg === 'string') return arg;
-                    try { return JSON.stringify(arg); } catch (_) { return String(arg); }
-                }).join(' ');
-                log(method === 'error' ? 'error' : 'warn', 'console', message);
-            } catch (_) {}
-            return original.apply(this, args);
+    for(const method of ['error','warn']){
+        const original=console[method];
+        if(typeof original!=='function')continue;
+        console[method]=function(...args){
+            // WebChromeClient captures these itself, avoid duplicate entries.
+            if(!hasNativeStore()){
+                try {
+                    const message=args.map(arg=>{
+                        if(arg instanceof Error)return arg.message+(arg.stack?'\n'+arg.stack:'');
+                        if(typeof arg==='string')return arg;
+                        try{return JSON.stringify(arg);}catch(_){return String(arg);}
+                    }).join(' ');
+                    log(method==='error'?'error':'warn','console',message);
+                }catch(_){}
+            }
+            return original.apply(this,args);
         };
     }
+    window.__stDebugLog=log;
 
     function nativeLogs() {
         try {
@@ -127,7 +177,7 @@
     }
     function updateStatus() {
         if (!statusEl) return;
-        const errors = combinedLogs().filter(x => x.level === 'error').length;
+        const errors = combinedLogs().filter(x => x.level === 'error').reduce((n,e)=>n+(Number(e.repeatCount)||1),0);
         statusEl.textContent = errors > 0 ? String(errors) + ' lỗi' : '';
         statusEl.hidden = errors === 0;
     }
@@ -374,6 +424,28 @@
             String(entry.source).toLowerCase().includes(state.search))) return false;
         return true;
     }
+    function describeLog(e) {
+        const pairs=[
+            ['Lần đầu',e.firstTimestamp?stamp(e.firstTimestamp):''],
+            ['Lần gần nhất',e.lastTimestamp?stamp(e.lastTimestamp):''],
+            ['Số lần xảy ra',Number(e.repeatCount||1)>1?e.repeatCount:''],
+            ['Loại tài nguyên',e.resourceType],['Phần tử',e.element],
+            ['URL yêu cầu',e.url],
+            ['URL gốc',e.originalUrl===''?'(để trống)':e.originalUrl],
+            ['Phương thức',e.method],['HTTP',e.httpStatus],
+            ['Mã lỗi',e.errorCode],
+            ['Khung chính',e.mainFrame==null?'':(e.mainFrame?'Có':'Không')],
+            ['Vị trí',e.location],['Stack trace',e.stack]
+        ];
+        return pairs.filter(([,v])=>v!==undefined&&v!==null&&v!=='')
+            .map(([k,v])=>k+': '+v).join('\n');
+    }
+    function formatLog(e) {
+        return '['+stamp(e.lastTimestamp||e.timestamp)+'] ['+e.source+'] ['+
+            e.level+'] '+safeLog(e.message)+(Number(e.repeatCount||1)>1?
+            ' (lặp '+e.repeatCount+' lần)':'')+
+            (describeLog(e)?'\n'+describeLog(e):'');
+    }
     function renderConsole() {
         const controls = node('div',undefined,'st-db-console-controls');
         const filters = node('div',undefined,'st-db-filters');
@@ -405,10 +477,7 @@
         const actions = node('div',undefined,'st-db-tools');
         actions.append(button('Sao chép log',()=>{
             const found=combinedLogs().filter(logsMatch);
-            return copy(found.map(x=>'[' + stamp(x.timestamp) + '] [' +
-                x.source + '] [' + x.level + '] ' + x.message +
-                (x.location ? '\n' + x.location : '')).join('\n'),
-                'Đã sao chép nhật ký');
+            return copy(found.map(formatLog).join('\n\n'),'Đã sao chép nhật ký');
         }));
         actions.append(button('Xuất báo cáo lỗi',()=>{
             const lines = [
@@ -418,9 +487,7 @@
                 'Số lượt gửi AI ghi nhận: ' + state.turns.length,
                 'Nội dung prompt và phản hồi AI không được tự động đưa vào báo cáo.',
                 '',
-                ...combinedLogs().slice(0,140).map(e=>'['+stamp(e.timestamp)+'] [' +
-                    e.level + '/' + e.source + '] ' + safeLog(e.message) +
-                    (e.location ? ' (' + e.location + ')' : ''))
+                ...combinedLogs().map(formatLog)
             ];
             return copy(lines.join('\n'),'Đã sao chép báo cáo lỗi');
         }));
@@ -445,16 +512,23 @@
             target.append(node('p','Không có nhật ký phù hợp.'));
             return;
         }
-        for (const entry of filtered.slice(0,state.logLimit)) {
-            const row = node('div',undefined,'st-db-log-row st-db-' + cut(entry.level,10));
-            row.append(node('time',stamp(entry.timestamp)));
+        for(const entry of filtered.slice(0,state.logLimit)){
+            const row=node('div',undefined,'st-db-log-row st-db-'+cut(entry.level,10));
+            row.append(node('time',stamp(entry.lastTimestamp||entry.timestamp)));
             row.append(node('strong',cut(entry.source,30)));
-            const message = node('span',cut(entry.message,2300));
-            message.setAttribute('aria-label',entry.level + ': ' + entry.message);
+            const count=Number(entry.repeatCount||1);
+            const msg=cut(entry.message,12000)+(count>1?' (lặp '+count+' lần)':'');
+            const message=node('span',msg);
+            message.setAttribute('aria-label',entry.level+': '+msg);
             row.append(message);
-            if (entry.location) {
-                const trace = node('small',entry.location);
-                row.append(trace);
+            if(entry.location)row.append(node('small',entry.location));
+            const detailText=describeLog(entry);
+            if(detailText){
+                const disclosure=node('details',undefined,'st-db-log-details');
+                disclosure.append(node('summary','Chi tiết lỗi'));
+                const detail=node('pre',detailText);
+                detail.tabIndex=0;
+                disclosure.append(detail);row.append(disclosure);
             }
             target.append(row);
         }
