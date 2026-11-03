@@ -110,6 +110,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 progressBar.visibility = View.GONE
                 injectMobileOptimizations(view)
+                injectDebugPanel(view)
                 injectAndroidAccessibility(view)
                 injectPresetStudio(view)
                 injectCharacterStudio(view)
@@ -121,6 +122,9 @@ class MainActivity : AppCompatActivity() {
                 error: WebResourceError?
             ) {
                 super.onReceivedError(view, request, error)
+                DiagnosticStore.record(applicationContext, "error", "webview",
+                    error?.description?.toString() ?: "Không tải được tài nguyên",
+                    request?.url?.toString() ?: "")
                 if (request?.isForMainFrame == true) {
                     // Server might have stopped, show error
                     view?.loadData(
@@ -128,6 +132,17 @@ class MainActivity : AppCompatActivity() {
                         "text/html",
                         "UTF-8"
                     )
+                }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?, request: WebResourceRequest?, response: WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, response)
+                val status = response?.statusCode ?: 0
+                if (status >= 400) {
+                    DiagnosticStore.record(applicationContext, "warn", "http",
+                        "HTTP " + status, request?.url?.toString() ?: "")
                 }
             }
 
@@ -147,6 +162,7 @@ class MainActivity : AppCompatActivity() {
 
         // Register JavaScript interface for downloads
         webView.addJavascriptInterface(DownloadInterface(), "AndroidDownload")
+        webView.addJavascriptInterface(AndroidDiagnosticsBridge(applicationContext), "STAndroidDiagnostics")
 
         // Handle regular URL downloads via DownloadManager
         webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
@@ -168,6 +184,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(message: ConsoleMessage?): Boolean {
+                if (message != null) {
+                    val level = when (message.messageLevel()) {
+                        ConsoleMessage.MessageLevel.ERROR -> "error"
+                        ConsoleMessage.MessageLevel.WARNING -> "warn"
+                        ConsoleMessage.MessageLevel.DEBUG -> "debug"
+                        ConsoleMessage.MessageLevel.LOG -> "log"
+                        else -> "info"
+                    }
+                    DiagnosticStore.record(applicationContext, level, "webview",
+                        message.message() ?: "", "${message.sourceId()}:${message.lineNumber()}")
+                }
+                return super.onConsoleMessage(message)
+            }
+
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
                 if (newProgress < 100) {
@@ -294,6 +325,29 @@ class MainActivity : AppCompatActivity() {
             view.evaluateJavascript(styleCode + "\n" + js, null)
         } catch (error: Exception) {
             android.util.Log.e("CharacterStudio", "Unable to load character studio", error)
+        }
+    }
+
+    // Insert before other studio scripts so their startup errors are observable.
+    private fun injectDebugPanel(view: WebView?) {
+        view ?: return
+        try {
+            val css = assets.open("st-debug-panel.css")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val script = assets.open("st-debug-panel.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val styleJs = "(function() {" +
+                "if (document.getElementById('st-debug-panel-style')) return;" +
+                "var style = document.createElement('style');" +
+                "style.id = 'st-debug-panel-style';" +
+                "style.textContent = " + org.json.JSONObject.quote(css) + ";" +
+                "document.head.appendChild(style);" +
+                "})();"
+            view.evaluateJavascript(styleJs + "\n" + script, null)
+        } catch (error: Exception) {
+            DiagnosticStore.record(applicationContext, "error", "android",
+                "Không thể khởi tạo bảng gỡ lỗi: " + (error.message ?: ""), "MainActivity")
+            android.util.Log.e("DebugPanel", "Cannot inject debug panel", error)
         }
     }
 
@@ -606,10 +660,22 @@ class MainActivity : AppCompatActivity() {
             </style>
         </head>
         <body>
-            <h1>酒馆连接中断</h1>
-            <p>SillyTavern 服务似乎已停止运行。<br>请回到 Termux 确认服务状态。</p>
-            <div class="code">cd ~/SillyTavern && bash start.sh</div>
-            <button onclick="location.reload()">重新连接</button>
+            <h1>Không thể kết nối SillyTavern</h1>
+            <p>Máy chủ SillyTavern trong ứng dụng không phản hồi.</p>
+            <div class="code" id="native-error">Mở lại ứng dụng nếu lỗi vẫn tiếp diễn.</div>
+            <button onclick="location.reload()">Kết nối lại</button>
+            <button onclick="document.getElementById('diagnostics').hidden = !document.getElementById('diagnostics').hidden">Xem nhật ký lỗi</button>
+            <pre id="diagnostics" hidden style="max-width:100%;overflow:auto;white-space:pre-wrap;text-align:left"></pre>
+            <script>
+            try {
+                var messages = JSON.parse(window.STAndroidDiagnostics.getLogs());
+                document.getElementById('diagnostics').textContent = messages
+                    .filter(function(e){return e.level === 'error' || e.level === 'warn'})
+                    .slice(-25).map(function(e){
+                        return new Date(e.timestamp).toLocaleString() + ' [' + e.source + '] ' + e.message;
+                    }).join('\n') || 'Chưa có nhật ký lỗi.';
+            } catch(e) {}
+            </script>
         </body>
         </html>
         """.trimIndent()

@@ -128,11 +128,14 @@ class NodeService : Service() {
                     lastStartError = error
                     updateNotification("启动失败")
                     Log.e(TAG, "Failed to start server: $error")
+                    DiagnosticStore.record(applicationContext, "error", "node", error)
                 }
             } catch (e: Exception) {
                 lastStartError = e.message ?: e.javaClass.simpleName
                 updateNotification("启动出错: ${e.message}")
                 Log.e(TAG, "Error starting server", e)
+                DiagnosticStore.record(applicationContext, "error", "node",
+                    e.message ?: e.javaClass.simpleName)
             } finally {
                 isStarting = false
             }
@@ -147,6 +150,8 @@ class NodeService : Service() {
                 delay(5000) // Check every 5 seconds
                 if (!nodeManager.isProcessAlive()) {
                     Log.w(TAG, "Node.js process died, restarting...")
+                    DiagnosticStore.record(applicationContext, "error", "node",
+                        "Máy chủ Node.js dừng bất ngờ, đang khởi động lại")
                     isRunning = false
                     updateNotification("正在重启服务...")
                     delay(1000)

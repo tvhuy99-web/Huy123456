@@ -341,6 +341,13 @@ class NodeManager(private val context: Context) {
                             if (processOutput.size < 500) processOutput.add(line)
                         }
                         Log.i("$TAG:Node", line)
+                        val level = when {
+                            line.contains("error", ignoreCase = true) ||
+                                line.contains("fatal", ignoreCase = true) -> "error"
+                            line.contains("warn", ignoreCase = true) -> "warn"
+                            else -> "info"
+                        }
+                        DiagnosticStore.record(context.applicationContext, level, "node", line)
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Log reader stopped: ${e.message}")

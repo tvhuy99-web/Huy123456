@@ -74,7 +74,7 @@ object DiagnosticStore {
                 val persistent = JSONArray()
                 entries.filter { it.optString("level") in listOf("error", "warn") }
                     .takeLast(PERSISTED_LIMIT)
-                    .forEach(persistent::put)
+                    .forEach { persistent.put(it) }
                 context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit().putString(SAVED, persistent.toString()).apply()
             } catch (_: Exception) {
