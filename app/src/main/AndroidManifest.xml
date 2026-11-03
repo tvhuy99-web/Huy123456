@@ -15,6 +15,13 @@
     <!-- V1 fallback: permission to send commands to Termux -->
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
+    <!-- Visible TTS engines on Android 11+ without requiring broad app queries. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

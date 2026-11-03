@@ -28,6 +28,7 @@ import java.io.FileOutputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private var speechBridge: AndroidSpeechBridge? = null
     private lateinit var progressBar: ProgressBar
     private lateinit var fullscreenContainer: FrameLayout
     private var hasInjectedMobileCSS = false
@@ -181,6 +182,16 @@ class MainActivity : AppCompatActivity() {
         // Register JavaScript interface for downloads
         webView.addJavascriptInterface(DownloadInterface(), "AndroidDownload")
         webView.addJavascriptInterface(AndroidDiagnosticsBridge(applicationContext), "STAndroidDiagnostics")
+        speechBridge = AndroidSpeechBridge(applicationContext) { utteranceId, success, reason ->
+            if (!isFinishing && !isDestroyed) {
+                val js = "window.__stAndroidTtsComplete?.(" +
+                    org.json.JSONObject.quote(utteranceId) + "," + success + "," +
+                    org.json.JSONObject.quote(reason) + ");"
+                webView.evaluateJavascript(js, null)
+            }
+        }.also { bridge ->
+            webView.addJavascriptInterface(bridge, "STAndroidTTS")
+        }
 
         // Handle regular URL downloads via DownloadManager
         webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
@@ -789,6 +800,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        speechBridge?.shutdown()
         webView.destroy()
         super.onDestroy()
     }
