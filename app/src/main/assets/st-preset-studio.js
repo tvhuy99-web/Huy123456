@@ -107,7 +107,11 @@ import('./scripts/openai.js').then(api => {
             ['Đổi tên', '[data-preset-manager-rename="openai"]'],
             ['Nhập', '#import_oai_preset'],
             ['Xuất', '#export_oai_preset'],
-            ['Xóa', '#delete_oai_preset']
+            ['Xóa', '#delete_oai_preset'],
+            ['Nhập danh sách lời nhắc', '#prompt-manager-import'],
+            ['Xuất danh sách lời nhắc', '#prompt-manager-export'],
+            ['Khôi phục thứ tự lời nhắc', '#prompt-manager-reset-character'],
+            ['Liên kết Preset với API', '#bind_preset_to_connection']
         ];
         popup('Tùy chọn Preset', options.map(([label, selector]) => ({
             label, run: () => clickNative(selector)
@@ -230,7 +234,9 @@ import('./scripts/openai.js').then(api => {
         const pm = promptManager();
         if (!pm?.activeCharacter || !pm.serviceSettings) return;
         const list = get('st-ps-prompts');
-        const focusId = document.activeElement?.dataset?.presetPromptId;
+        const focused = document.activeElement;
+        const focusId = focused?.dataset?.presetPromptId;
+        const focusSwitch = focused?.classList?.contains('st-ps-switch');
         list.replaceChildren();
         const move = get('st-ps-move');
         move.replaceChildren();
@@ -252,6 +258,7 @@ import('./scripts/openai.js').then(api => {
                 if (original) pm.handleToggle({ target: original });
             });
             toggle.className = 'st-ps-switch';
+            toggle.dataset.presetPromptId = id;
             toggle.setAttribute('role','switch');
             toggle.setAttribute('aria-checked',String(!!row.enabled));
             toggle.setAttribute('aria-label','Bật lời nhắc ' + (p.name || 'Không tên'));
@@ -295,7 +302,8 @@ import('./scripts/openai.js').then(api => {
         }
         if (focusId) {
             const active = Array.from(list.querySelectorAll('[data-preset-prompt-id]'))
-                .find(el => el.dataset.presetPromptId === focusId);
+                .find(el => el.dataset.presetPromptId === focusId &&
+                    el.classList.contains('st-ps-switch') === focusSwitch);
             if (active) active.focus({preventScroll:true});
         }
     }
