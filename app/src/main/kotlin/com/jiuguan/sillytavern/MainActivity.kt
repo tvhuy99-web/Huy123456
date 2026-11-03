@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
                 progressBar.visibility = View.GONE
                 injectMobileOptimizations(view)
                 injectAndroidAccessibility(view)
+                injectPresetStudio(view)
             }
 
             override fun onReceivedError(
@@ -248,6 +249,27 @@ class MainActivity : AppCompatActivity() {
             view.evaluateJavascript(script, null)
         } catch (e: Exception) {
             android.util.Log.e("SillyTavernA11y", "Accessibility script unavailable", e)
+        }
+    }
+
+    // Android-only Preset UI, backed by the original SillyTavern controls.
+    private fun injectPresetStudio(view: WebView?) {
+        view ?: return
+        try {
+            val css = assets.open("st-preset-studio.css")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val script = assets.open("st-preset-studio.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val styleJs = "(function() {" +
+                "if (document.getElementById('st-preset-studio-style')) return;" +
+                "var style = document.createElement('style');" +
+                "style.id = 'st-preset-studio-style';" +
+                "style.textContent = " + org.json.JSONObject.quote(css) + ";" +
+                "document.head.appendChild(style);" +
+                "})();"
+            view.evaluateJavascript(styleJs + "\n" + script, null)
+        } catch (error: Exception) {
+            android.util.Log.e("PresetStudio", "Unable to inject Preset Studio", error)
         }
     }
 
