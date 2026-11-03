@@ -120,6 +120,7 @@ def main():
 
     # Keep this alternate packaging route consistent with setup_assets.py.
     run([sys.executable, str(PROJECT_ROOT / "scripts" / "patch_preset_bridge.py"), str(st_dir)])
+    run([sys.executable, str(PROJECT_ROOT / "scripts" / "patch_debug_capture.py"), str(st_dir)])
     package_zip(st_dir)
     print("\nSuccess! Now build the APK in Android Studio.")
 

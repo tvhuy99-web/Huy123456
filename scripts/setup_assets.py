@@ -164,6 +164,7 @@ def package_sillytavern(branch: str, repo: str):
 
     # Keep original SillyTavern persistence, add only public getter/save bridge.
     run([sys.executable, str(PROJECT_ROOT / "scripts" / "patch_preset_bridge.py"), str(st_dir)])
+    run([sys.executable, str(PROJECT_ROOT / "scripts" / "patch_debug_capture.py"), str(st_dir)])
 
     # Also remove node_modules/.bin (Windows symlinks, not needed on Android)
     bin_dir = st_dir / "node_modules" / ".bin"
