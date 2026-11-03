@@ -433,6 +433,7 @@ const get = id => document.getElementById(id);
             if (advancedSettings && advancedAnchor.parentNode) advancedAnchor.after(advancedSettings);
         }
         area.classList.toggle('st-ps-active',on);
+        get('left-nav-panel')?.classList.toggle('st-ps-drawer-active', on);
         area.classList.toggle('st-ps-show-prompts',on && tab === 'prompts');
         ui.hidden = !on;
         if (on) {syncPresets();render();}

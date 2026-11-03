@@ -76,3 +76,5 @@
  #st-preset-studio .st-ps-toolbar select {flex-basis:100%}
  #st-preset-studio .st-ps-toolbar button {flex:1}
 }
+/* Hide native slider tip when the compact Preset screen is active. */
+#left-nav-panel.st-ps-drawer-active > #clickSlidersTips {display:none!important}
