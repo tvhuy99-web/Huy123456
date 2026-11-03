@@ -74,6 +74,7 @@ jobs:
           python tests/preset-features-browser.py
           python tests/character-studio-browser.py
           python tests/debug-panel-browser.py
+          python tests/debug-console-bounds-browser.py
 
       - name: Configure Huy123456-specific stable debug signing key
         shell: bash
