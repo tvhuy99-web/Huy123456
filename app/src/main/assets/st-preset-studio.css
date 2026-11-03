@@ -1,4 +1,9 @@
-#ai_response_configuration.st-ps-active #openai_api-presets > div:first-child {display:none!important}
+/* Hide the original sections only for Chat Completion. The original form
+   elements are moved, not duplicated, into the Studio config tab. */
+#ai_response_configuration.st-ps-active > :not(#st-preset-studio) {display:none!important}
+#ai_response_configuration.st-ps-active #st-ps-config-panel > #range_block_openai,
+#ai_response_configuration.st-ps-active #st-ps-config-panel > #openai_settings {display:block!important;width:100%!important}
+#st-preset-studio[hidden],#st-preset-studio [hidden] {display:none!important}
 #ai_response_configuration.st-ps-show-prompts > #common-gen-settings-block,
 #ai_response_configuration.st-ps-show-prompts > #respective-ranges-and-temps,
 #ai_response_configuration.st-ps-show-prompts > #advanced-ai-config-block {display:none!important}
