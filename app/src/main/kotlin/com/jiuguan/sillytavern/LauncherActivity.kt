@@ -1,6 +1,9 @@
 package com.jiuguan.sillytavern
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
@@ -35,6 +38,35 @@ class LauncherActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "LauncherActivity"
         private const val MAX_SERVER_CHECKS = 120 // 120 × 1s = 2min timeout (first run copies presets)
+    }
+
+    private var currentState = State.HOME
+
+    private fun showStartupDiagnostics() {
+        val saved = try { org.json.JSONArray(DiagnosticStore.snapshot(applicationContext)) }
+                    catch (_: Exception) { org.json.JSONArray() }
+        val items = mutableListOf<String>()
+        for (index in maxOf(0, saved.length() - 35) until saved.length()) {
+            val item = saved.optJSONObject(index) ?: continue
+            if (item.optString("level") !in listOf("error", "warn")) continue
+            val at = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+                .format(java.util.Date(item.optLong("timestamp")))
+            items.add("[" + at + "] [" + item.optString("source") + "] " +
+                item.optString("message") +
+                (if (item.optString("location").isNotBlank()) "\n" + item.optString("location") else ""))
+        }
+        val report = if (items.isEmpty()) "Chưa có nhật ký lỗi được ghi nhận."
+                     else items.joinToString("\n\n")
+        AlertDialog.Builder(this)
+            .setTitle("Nhật ký lỗi SillyTavern")
+            .setMessage(report)
+            .setPositiveButton("Sao chép") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Nhật ký lỗi SillyTavern", report))
+                Toast.makeText(this, "Đã sao chép nhật ký lỗi.", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
     }
 
     private lateinit var prefs: SharedPreferences
@@ -94,8 +126,12 @@ class LauncherActivity : AppCompatActivity() {
         btnImport = findViewById(R.id.btn_import)
 
         btnRetry.setOnClickListener {
-            checkAttempts = 0
-            if (isV2Mode) startV2() else startServerCheck()
+            if (currentState == State.ERROR) {
+                showStartupDiagnostics()
+            } else {
+                checkAttempts = 0
+                if (isV2Mode) startV2() else startServerCheck()
+            }
         }
         btnExport.setOnClickListener { exportUserData() }
         btnImport.setOnClickListener { pickImportFile() }
@@ -192,6 +228,8 @@ class LauncherActivity : AppCompatActivity() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "V2 startup failed", e)
+                DiagnosticStore.record(applicationContext, "error", "launcher",
+                    e.message ?: e.javaClass.simpleName)
                 showState(State.ERROR)
                 runOnUiThread {
                     subtitleText.text = "启动失败: ${e.message}"
@@ -448,6 +486,7 @@ class LauncherActivity : AppCompatActivity() {
 
     private fun showState(state: State) {
         runOnUiThread {
+            currentState = state
             when (state) {
                 State.HOME -> {
                     statusText.text = "准备就绪"
@@ -531,14 +570,16 @@ class LauncherActivity : AppCompatActivity() {
                     }
                 }
                 State.ERROR -> {
-                    statusText.text = "出错了"
+                    statusText.text = "Không thể khởi động SillyTavern"
                     subtitleText.visibility = View.VISIBLE
                     progressBar.visibility = View.GONE
                     btnStart.text = "重试"
                     btnStart.visibility = View.VISIBLE
                     btnExport.visibility = View.VISIBLE
                     btnImport.visibility = View.VISIBLE
-                    btnRetry.visibility = View.GONE
+                    btnRetry.visibility = View.VISIBLE
+                    btnRetry.text = "Xem nhật ký lỗi"
+                    btnRetry.contentDescription = "Xem nhật ký lỗi"
                     btnTermux.visibility = View.GONE
                     btnSettings.visibility = View.VISIBLE
                 }
