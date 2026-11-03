@@ -64,6 +64,7 @@ with sync_playwright() as playwright:
         const img=document.createElement('img');
         img.id='asset-with-empty-src';
         img.setAttribute('src','');
+        document.body.append(img);
         img.dispatchEvent(new Event('error'));
         const entry=window.__stDebugPanelState.logs
             .find(x=>x.resourceType==='img'&&x.element==='img#asset-with-empty-src');
