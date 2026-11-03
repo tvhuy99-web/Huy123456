@@ -45,6 +45,7 @@ jobs:
         run: |
           node --check app/src/main/assets/st-accessibility.js
           node --check app/src/main/assets/st-preset-studio.js
+          node --check app/src/main/assets/st-debug-panel.js
           node tests/a11y-smoke.mjs
           node tests/preset-studio-smoke.mjs
 
@@ -71,6 +72,7 @@ jobs:
           python tests/preset-studio-browser.py
           python tests/preset-features-browser.py
           python tests/character-studio-browser.py
+          python tests/debug-panel-browser.py
 
       - name: Configure Huy123456-specific stable debug signing key
         shell: bash
