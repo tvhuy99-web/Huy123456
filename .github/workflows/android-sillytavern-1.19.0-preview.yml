@@ -46,6 +46,7 @@ jobs:
           node --check app/src/main/assets/st-accessibility.js
           node --check app/src/main/assets/st-preset-studio.js
           node tests/a11y-smoke.mjs
+          node tests/preset-studio-smoke.mjs
 
       - name: Install Android SDK 34
         run: |
