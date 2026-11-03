@@ -43,7 +43,7 @@ with sync_playwright() as playwright:
     page.add_style_tag(content=style)
     page.evaluate("""() => {
         document.getElementById('left-nav-panel').style.display='block';
-        document.getElementById('main_api').value='openai';
+        document.getElementById('main_api').value='textgenerationwebui';
         document.getElementById('settings_preset_openai')
             .insertAdjacentHTML('beforeend','<option value="extra">Preset thử</option>');
         window.__nativePM = {
@@ -72,8 +72,14 @@ with sync_playwright() as playwright:
         window.__nativePM.render();
     }""")
     page.evaluate(source)
-    page.wait_for_timeout(220)
+    # Regression for the reported Android issue: the API is restored after
+    # onPageFinished by assigning .value without dispatching a DOM event.
+    assert not page.locator('#st-preset-studio').is_visible()
+    page.locator('#main_api').evaluate("node => node.value = 'openai'")
+    page.wait_for_timeout(850)
     assert page.locator('#st-preset-studio').is_visible(), 'Preset UI is not visible'
+    assert page.locator('#st-ps-config-panel details.st-ps-group').count() == 6, 'Six configuration sections, no duplicate advanced'
+    assert not page.locator('#openai_api-presets').is_visible(), 'Legacy preset heading must be hidden'
     assert page.locator('#st-ps-config-panel #range_block_openai').count() == 1
     assert page.locator('#st-ps-config-panel #openai_settings').count() == 1
     assert page.eval_on_selector_all(

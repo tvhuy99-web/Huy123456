@@ -16,7 +16,8 @@ const get = id => document.getElementById(id);
     const promptManager = () => api?.promptManager;
     const entries = () => {
         const pm = promptManager();
-        return pm?.activeCharacter ? pm.getPromptOrderForCharacter(pm.activeCharacter) : [];
+        const list = pm?.activeCharacter ? pm.getPromptOrderForCharacter(pm.activeCharacter) : [];
+        return Array.isArray(list) ? list : [];
     };
     const make = (tag, textValue, className) => {
         const el = document.createElement(tag);
@@ -112,18 +113,17 @@ const get = id => document.getElementById(id);
             ['Nhập', '#import_oai_preset'],
             ['Xuất', '#export_oai_preset'],
             ['Xóa', '#delete_oai_preset'],
-            ['Nhập danh sách lời nhắc', '#prompt-manager-import'],
-            ['Xuất danh sách lời nhắc', '#prompt-manager-export'],
-            ['Khôi phục thứ tự lời nhắc', '#prompt-manager-reset-character'],
+            ['Nhập danh sách lời nhắc', () => promptManager()?.handleImport()],
+            ['Xuất danh sách lời nhắc', () => promptManager()?.handleFullExport()],
+            ['Khôi phục thứ tự lời nhắc', () => promptManager()?.handleCharacterReset()],
             ['Liên kết Preset với API', '#bind_preset_to_connection']
         ];
         popup('Tùy chọn Preset', options.map(([label, selector]) => ({
-            label, run: () => clickNative(selector)
+            label, run: () => typeof selector === 'function' ? selector() : clickNative(selector)
         })), event.currentTarget);
     });
     function showTab(which) {
         tab = which;
-        area.classList.toggle('st-ps-show-prompts', which === 'prompts');
         get('st-ps-prompts-panel').hidden = which !== 'prompts';
         get('st-ps-config-panel').hidden = which !== 'config';
         area.classList.toggle('st-ps-show-prompts', source.value === 'openai' && which === 'prompts');
@@ -385,12 +385,10 @@ const get = id => document.getElementById(id);
         const length = group('Độ dài phản hồi',false);
         const sampling = group('Sampling nâng cao',false);
         const generation = group('Điều khiển tạo văn bản',false);
-        const advanced = group('Cấu hình nâng cao',false);
         native.forEach((node,index) => {
-            const dest = [10,13,14].includes(index) ? basic :
+            const dest = [10,13,14,16].includes(index) ? basic :
                 [0,1,2].includes(index) ? length :
-                [11,12,15,16,17,20].includes(index) ? sampling :
-                [3,4,9].includes(index) ? generation : advanced;
+                [11,12,15,17].includes(index) ? sampling : generation;
             dest.append(node);
         });
     }
@@ -439,6 +437,23 @@ const get = id => document.getElementById(id);
         if (on) {syncPresets();render();}
     }
     source.addEventListener('change',() => setTimeout(active,0));
+    // SillyTavern restores the selected API asynchronously. Its jQuery
+    // synthetic events do not always reach native addEventListener handlers.
+    if (window.jQuery) {
+        window.jQuery(source).on('change.stPresetStudio',() => setTimeout(active,0));
+    }
+    // Watch property-only changes too: setting select.value emits no event.
+    // Skip all expensive work when the visible mode is already correct.
+    setInterval(() => {
+        const enabled = source.value === 'openai';
+        if (ui.hidden === enabled || area.classList.contains('st-ps-active') !== enabled) {
+            active();
+        }
+        if (enabled && (get('st-ps-select').value !== preset.value ||
+                        get('st-ps-select').options.length !== preset.options.length)) {
+            syncPresets();
+        }
+    }, 600);
     // The shell appears synchronously even if the ES module takes time to load.
     active();
     showTab('config');
