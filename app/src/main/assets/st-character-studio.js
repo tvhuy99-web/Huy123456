@@ -165,6 +165,25 @@
         tabs.append(activeName,tabRow);
         chat.before(tabs);
 
+        // Mobile right drawer overlays the chat header. Mirror only the
+        // navigation controls within the native drawer, not the chat/editor.
+        const drawerTabs = make('section',undefined,'st-cs-drawer-tabs');
+        drawerTabs.id = 'st-cs-drawer-tabs';
+        drawerTabs.hidden = true;
+        const drawerName = make('h2','');
+        const drawerRow = make('div',undefined,'st-cs-tab-row');
+        drawerRow.setAttribute('role','tablist');
+        drawerRow.setAttribute('aria-label','Chế độ nhân vật');
+        const drawerChat = button('Trò chuyện',()=>setView('chat'));
+        const drawerEdit = button('Chỉnh sửa',()=>setView('edit'));
+        drawerChat.id='st-cs-drawer-tab-chat';
+        drawerEdit.id='st-cs-drawer-tab-edit';
+        for (const node of [drawerChat,drawerEdit]) node.setAttribute('role','tab');
+        drawerRow.append(drawerChat,drawerEdit);
+        drawerTabs.append(drawerName,drawerRow);
+        originalPanel.insertBefore(drawerTabs,byId('rm_PinAndTabs'));
+
+
         let scriptApi = null;
         let groupApi = null;
         let selectedView = 'chat';
@@ -217,7 +236,9 @@
         function syncSelected() {
             const name = selectedCharacterName();
             activeName.textContent = name;
+            drawerName.textContent = name;
             tabs.hidden = !name;
+            drawerTabs.hidden = !name;
             if (name) {
                 chatButton.setAttribute('aria-label','Trò chuyện với ' + name);
                 editButton.setAttribute('aria-label','Chỉnh sửa ' + name);
@@ -226,7 +247,8 @@
         function setView(view, {fromCard = false} = {}) {
             selectedView = view;
             syncSelected();
-            for (const [node,which] of [[chatButton,'chat'],[editButton,'edit']]) {
+            for (const [node,which] of [[chatButton,'chat'],[editButton,'edit'],
+                [drawerChat,'chat'],[drawerEdit,'edit']]) {
                 node.setAttribute('aria-selected', String(view === which));
                 node.tabIndex = view === which ? 0 : -1;
             }

@@ -141,9 +141,13 @@ with sync_playwright() as p:
     assert page.locator('#st-character-tabs').is_visible()
     assert page.locator('#st-cs-active-name').inner_text()=='Alice'
     assert page.locator('#st-cs-tab-chat').get_attribute('aria-selected')=='true'
+    # Native mobile drawer overlays the central bar; closed drawers do not
+    # intercept taps, while open drawers expose their own tab controls.
+    page.add_style_tag(content='#right-nav-panel.closedDrawer {pointer-events:none!important}')
     page.locator('#st-cs-tab-edit').click()
     assert page.locator('#st-cs-tab-edit').get_attribute('aria-selected')=='true'
-    page.locator('#st-cs-tab-chat').click()
+    assert page.locator('#st-cs-drawer-tabs').count()==1
+    page.locator('#st-cs-drawer-tab-chat').click()
     assert page.locator('#st-cs-tab-chat').get_attribute('aria-selected')=='true'
     card.dispatch_event('contextmenu')
     menu=page.get_by_role('dialog')
@@ -153,7 +157,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(100)
     assert page.evaluate('window.__nativeActions.export_button')==1
     # The native group card still has its own click path.
-    page.locator('#rm_print_characters_block .group_select').first.click()
+    page.locator('#rm_print_characters_block .group_select').first.evaluate('node => node.click()')
     page.wait_for_timeout(80)
     assert page.locator('#st-cs-active-name').inner_text()=='Nhóm A'
     assert page.locator('#rm_buttons_container #extension-owned-button').count()==1

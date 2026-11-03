@@ -97,3 +97,27 @@
     background:#1e293b;color:#f1f5f9;font-size:15px;
 }
 .st-cs-dialog button:focus-visible {outline:2px solid #38bdf8;outline-offset:2px}
+
+/* The right drawer overlays the central chat on mobile: navigation remains
+   accessible in the active native panel without duplicating any data. */
+#st-cs-drawer-tabs[hidden] {display:none!important}
+#right-nav-panel[data-menu-type="characters"] > #st-cs-drawer-tabs,
+#right-nav-panel[data-menu-type="create"] > #st-cs-drawer-tabs,
+#right-nav-panel[data-menu-type="group_create"] > #st-cs-drawer-tabs {display:none!important}
+#st-cs-drawer-tabs {
+    margin:8px 10px;padding:10px;border-bottom:1px solid #334155;
+    background:rgba(15,23,42,.9);color:#e2e8f0;
+}
+#st-cs-drawer-tabs h2 {margin:0 0 8px;font-size:17px;overflow-wrap:anywhere}
+#st-cs-drawer-tabs .st-cs-tab-row {display:flex;gap:8px}
+#st-cs-drawer-tabs .st-cs-tab-row button {
+    flex:1;min-height:44px;padding:9px;
+    background:#1e293b;color:#e2e8f0;
+    border:1px solid #334155;border-radius:10px;
+}
+#st-cs-drawer-tabs .st-cs-tab-row [aria-selected=true] {
+    border-color:#38bdf8;background:#075985;
+}
+#st-cs-drawer-tabs .st-cs-tab-row button:focus-visible {
+    outline:2px solid #38bdf8;outline-offset:2px;
+}
