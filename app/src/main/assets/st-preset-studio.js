@@ -1,16 +1,19 @@
 (() => {
 'use strict';
 if (window.__stPresetStudioInstalled) return;
-window.__stPresetStudioInstalled = true;
-import('./scripts/openai.js').then(api => {
-    const get = id => document.getElementById(id);
+const get = id => document.getElementById(id);
     const host = get('openai_api-presets');
     const area = get('ai_response_configuration');
     const preset = get('settings_preset_openai');
     const source = get('main_api');
     const nativeList = get('completion_prompt_manager');
-    if (!host || !area || !preset || !source || !nativeList) return;
-    const promptManager = () => api.promptManager;
+    if (!host || !area || !preset || !source || !nativeList) {
+        console.error('[Preset Studio] Missing SillyTavern 1.19.0 DOM anchors');
+        return;
+    }
+    window.__stPresetStudioInstalled = true;
+    let api = null;
+    const promptManager = () => api?.promptManager;
     const entries = () => {
         const pm = promptManager();
         return pm?.activeCharacter ? pm.getPromptOrderForCharacter(pm.activeCharacter) : [];
@@ -36,6 +39,7 @@ import('./scripts/openai.js').then(api => {
       '<div class="st-ps-tabs" role="tablist" aria-label="Mục Preset">' +
       '<button id="st-ps-config-tab" role="tab" type="button" aria-selected="true" aria-controls="st-ps-config-panel">Cấu hình</button>' +
       '<button id="st-ps-prompts-tab" role="tab" type="button" aria-selected="false" aria-controls="st-ps-prompts-panel">Lời nhắc</button></div>' +
+      '<section id="st-ps-config-panel" role="tabpanel" aria-labelledby="st-ps-config-tab"></section>' +
       '<section id="st-ps-prompts-panel" role="tabpanel" aria-labelledby="st-ps-prompts-tab" hidden>' +
       '<div class="st-ps-toolbar"><select id="st-ps-filter" aria-label="Lọc lời nhắc">' +
       '<option value="all">Tất cả</option><option value="on">Đã bật</option>' +
@@ -43,7 +47,7 @@ import('./scripts/openai.js').then(api => {
       '<button id="st-ps-add" type="button">Thêm lời nhắc</button></div>' +
       '<div id="st-ps-move"></div><div id="st-ps-prompts"></div>' +
       '<button id="st-ps-preview" type="button">Xem trước lời nhắc gửi tới AI</button></section>';
-    host.append(ui);
+    area.prepend(ui);
 
     let tab = 'config';
     let filter = 'all';
@@ -121,6 +125,8 @@ import('./scripts/openai.js').then(api => {
         tab = which;
         area.classList.toggle('st-ps-show-prompts', which === 'prompts');
         get('st-ps-prompts-panel').hidden = which !== 'prompts';
+        get('st-ps-config-panel').hidden = which !== 'config';
+        area.classList.toggle('st-ps-show-prompts', source.value === 'openai' && which === 'prompts');
         for (const key of ['config','prompts']) {
             const node = get('st-ps-' + key + '-tab');
             node.setAttribute('aria-selected', String(which === key));
@@ -354,8 +360,16 @@ import('./scripts/openai.js').then(api => {
         } finally { control.disabled = false; }
     });
 
-    // Group existing native controls, preserving each original input and handler.
+    // Move the actual SillyTavern controls into the tab, never clone them.
+    const configPanel = get('st-ps-config-panel');
     const range = get('range_block_openai');
+    const advancedSettings = get('openai_settings');
+    const rangeAnchor = document.createComment('Original sampler controls');
+    const advancedAnchor = document.createComment('Original OpenAI settings');
+    if (range) range.before(rangeAnchor);
+    if (advancedSettings) advancedSettings.before(advancedAnchor);
+    if (range) configPanel.append(range);
+    if (advancedSettings) configPanel.append(advancedSettings);
     if (range && !range.dataset.studioGrouped) {
         range.dataset.studioGrouped = 'true';
         const native = Array.from(range.children);
@@ -380,7 +394,6 @@ import('./scripts/openai.js').then(api => {
             dest.append(node);
         });
     }
-    const advancedSettings = get('openai_settings');
     if (advancedSettings && !advancedSettings.dataset.studioGrouped) {
         advancedSettings.dataset.studioGrouped = 'true';
         const children = Array.from(advancedSettings.children);
@@ -412,12 +425,30 @@ import('./scripts/openai.js').then(api => {
     }).observe(nativeList,{childList:true,subtree:true});
     function active() {
         const on = source.value === 'openai';
+        if (on) {
+            if (range && range.parentNode !== configPanel) configPanel.append(range);
+            if (advancedSettings && advancedSettings.parentNode !== configPanel) configPanel.append(advancedSettings);
+        } else {
+            if (range && rangeAnchor.parentNode) rangeAnchor.after(range);
+            if (advancedSettings && advancedAnchor.parentNode) advancedAnchor.after(advancedSettings);
+        }
         area.classList.toggle('st-ps-active',on);
         area.classList.toggle('st-ps-show-prompts',on && tab === 'prompts');
+        ui.hidden = !on;
         if (on) {syncPresets();render();}
     }
     source.addEventListener('change',() => setTimeout(active,0));
+    // The shell appears synchronously even if the ES module takes time to load.
     active();
     showTab('config');
-}).catch(err => console.error('[Preset Studio]',err));
+    const moduleUrl = new URL('scripts/openai.js', document.baseURI).href;
+    import(moduleUrl).then(module => {
+        api = module;
+        if (source.value === 'openai') render();
+    }).catch(err => {
+        console.error('[Preset Studio] Unable to import native PromptManager',err);
+        const error = make('p','Không thể tải Prompt Manager. Vui lòng tải lại trang.');
+        error.setAttribute('role','alert');
+        get('st-ps-prompts').append(error);
+    });
 })();
