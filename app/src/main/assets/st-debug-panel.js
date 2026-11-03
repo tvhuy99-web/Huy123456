@@ -19,7 +19,7 @@
     const hasNativeStore = () => typeof window.STAndroidDiagnostics?.recordClientEvent === 'function';
     const state = {
         logs: [], turns: [], counter: 0,
-        tab: 'console', filter: 'all', search: '', logLimit: 50,
+        tab: 'console', filter: 'all', search: '', logLimit: 5,
         turnLimit: 3, rawLimit: 3, errors: 0
     };
     let root = null, content = null, statusEl = null, liveNotice = null;
@@ -457,7 +457,7 @@
         ];
         for (const [key,label] of choices) {
             const control = button(label,()=>{
-                state.filter=key;state.logLimit=50;renderCurrent();
+                state.filter=key;renderCurrent();
             });
             control.setAttribute('aria-pressed',String(state.filter===key));
             filters.append(control);
@@ -470,14 +470,13 @@
         search.value=state.search;
         search.addEventListener('input',()=>{
             state.search=search.value.toLowerCase().trim();
-            state.logLimit=50;
             drawLogs();
         });
         controls.append(search);
         const actions = node('div',undefined,'st-db-tools');
         actions.append(button('Sao chép log',()=>{
-            const found=combinedLogs().filter(logsMatch);
-            return copy(found.map(formatLog).join('\n\n'),'Đã sao chép nhật ký');
+            // Copy the full retained console, regardless of search/filter/visible rows.
+            return copy(combinedLogs().map(formatLog).join('\n\n'),'Đã sao chép toàn bộ nhật ký');
         }));
         actions.append(button('Xuất báo cáo lỗi',()=>{
             const lines = [
@@ -517,7 +516,9 @@
             row.append(node('time',stamp(entry.lastTimestamp||entry.timestamp)));
             row.append(node('strong',cut(entry.source,30)));
             const count=Number(entry.repeatCount||1);
-            const msg=cut(entry.message,12000)+(count>1?' (lặp '+count+' lần)':'');
+            const shortMessage=cut(entry.message,220);
+            const msg=shortMessage+(entry.message.length>220?'…':'')+
+                (count>1?' (lặp '+count+' lần)':'');
             const message=node('span',msg);
             message.setAttribute('aria-label',entry.level+': '+msg);
             row.append(message);
@@ -532,11 +533,9 @@
             }
             target.append(row);
         }
-        if (filtered.length > state.logLimit) {
-            target.append(button('Xem thêm nhật ký',()=>{
-                state.logLimit += 50;drawLogs();
-            }));
-        }
+        // Present only five rows. The full 200k-character ring remains
+        // available through Copy Log / Export Report, not as thousands of
+        // TalkBack focusable rows or extra "load more" buttons.
     }
     function renderTurns(isRaw) {
         const items = state.turns.slice(0,isRaw?state.rawLimit:state.turnLimit);
