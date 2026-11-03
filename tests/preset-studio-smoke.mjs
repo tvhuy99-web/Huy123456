@@ -17,6 +17,13 @@ for (const key of nativeMethods) {
     'Must use native PromptManager: '+key);
 }
 assert.match(css,/white-space:\s*pre-wrap/);
+assert.ok(source.indexOf('area.prepend(ui)') < source.indexOf('import(moduleUrl)'),
+  'Preset interface must render even when the OpenAI module cannot import');
+assert.ok(source.includes("get('st-ps-config-panel').hidden"), 'Both tabs must have real panels');
+assert.match(css,/st-ps-active > :not\(#st-preset-studio\)/,
+  'Original sibling panels must be hidden while Studio is active');
+assert.match(source,/configPanel\.append\(range\)/,
+  'Original sampling controls must be moved into the configuration tab');
 assert.ok(source.includes("make('div',p.content || '','st-ps-content')"),
   'Prompt content cannot be truncated');
 assert.doesNotMatch(source,/indexedDB|localStorage|\/api\/presets/,

@@ -64,6 +64,12 @@ jobs:
           python scripts/setup_assets.py --st-branch 1.19.0
           python scripts/verify_upgrade_bundle.py
 
+      - name: Browser-test Preset Studio with real SillyTavern 1.19.0 HTML
+        timeout-minutes: 8
+        run: |
+          python -m pip install playwright
+          python tests/preset-studio-browser.py
+
       - name: Configure Huy123456-specific stable debug signing key
         shell: bash
         run: |
