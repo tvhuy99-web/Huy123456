@@ -44,6 +44,7 @@ jobs:
       - name: Test TalkBack labels and decorative controls
         run: |
           node --check app/src/main/assets/st-accessibility.js
+          node --check app/src/main/assets/st-preset-studio.js
           node tests/a11y-smoke.mjs
 
       - name: Install Android SDK 34
