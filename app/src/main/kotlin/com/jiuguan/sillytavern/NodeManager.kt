@@ -33,7 +33,7 @@ class NodeManager(private val context: Context) {
         private const val VERSION_FILE = "v2_version.txt"
 
         // Current bundle version - bump this to force re-extraction
-        const val BUNDLE_VERSION = "1.19.0-2"
+        const val BUNDLE_VERSION = "1.19.0-3"
     }
 
     private var nodeProcess: Process? = null
@@ -147,6 +147,30 @@ class NodeManager(private val context: Context) {
             val version = org.json.JSONObject(stagePackage.readText()).optString("version")
             if (version != "1.19.0") {
                 throw IOException("Expected SillyTavern 1.19.0 but package contains $version")
+            }
+
+            // Global third-party extensions live in the engine tree rather
+            // than /data. Stage a COPY before moving the old engine so that
+            // interruption/rollback never loses installed extensions.
+            val globalRelative = "public/scripts/extensions/third-party"
+            val oldGlobalExtensions = File(activeDir, globalRelative)
+            if (oldGlobalExtensions.isDirectory) {
+                onProgress("Đang bảo toàn tiện ích mở rộng...")
+                val stagedGlobalExtensions = File(stageDir, globalRelative)
+                if (!stagedGlobalExtensions.exists() && !stagedGlobalExtensions.mkdirs()) {
+                    throw IOException("Cannot create global extension staging directory")
+                }
+                oldGlobalExtensions.listFiles()?.forEach { installed ->
+                    if (installed.name != ".gitkeep") {
+                        val destination = File(stagedGlobalExtensions, installed.name)
+                        if (destination.exists()) {
+                            throw IOException("Global extension conflict: ${installed.name}")
+                        }
+                        if (!installed.copyRecursively(destination, overwrite = false)) {
+                            throw IOException("Cannot preserve global extension: ${installed.name}")
+                        }
+                    }
+                }
             }
 
             onProgress("Đang nâng cấp và giữ dữ liệu...")
