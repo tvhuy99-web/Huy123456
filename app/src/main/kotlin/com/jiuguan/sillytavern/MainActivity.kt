@@ -267,7 +267,9 @@ class MainActivity : AppCompatActivity() {
                 "style.textContent = " + org.json.JSONObject.quote(css) + ";" +
                 "document.head.appendChild(style);" +
                 "})();"
-            view.evaluateJavascript(styleJs + "\n" + script, null)
+            val features = assets.open("st-preset-features.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            view.evaluateJavascript(styleJs + "\n" + script + "\n" + features, null)
         } catch (error: Exception) {
             android.util.Log.e("PresetStudio", "Unable to inject Preset Studio", error)
         }

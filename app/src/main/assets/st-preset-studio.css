@@ -78,3 +78,28 @@
 }
 /* Hide native slider tip when the compact Preset screen is active. */
 #left-nav-panel.st-ps-drawer-active > #clickSlidersTips {display:none!important}
+
+
+/* Nested Logit Bias section remains separate from full Preset operations. */
+#st-ps-logit-bias > #logit_bias_openai,
+#st-ps-logit-bias #logit_bias_openai {display:none!important}
+#st-ps-logit-bias .openai_logit_bias_preset_form [role="button"] {
+    min-width:38px; min-height:38px; padding:8px;
+}
+.st-ps-json-dialog textarea {
+    width:100%; max-width:100%; min-height:230px;
+    padding:12px; resize:vertical; border-radius:10px;
+    border:1px solid #475569; background:#020617;
+    color:#e2e8f0; font:13px/1.5 monospace;
+}
+.st-ps-json-dialog .st-ps-error {color:#fca5a5;white-space:pre-wrap}
+.st-ps-json-dialog .st-ps-error:empty {display:none}
+.st-ps-preview-dialog .st-ps-preview-message {
+    margin:10px 0; padding:8px 0; border-top:1px solid #334155;
+}
+.st-ps-preview-dialog .st-ps-preview-message h4 {
+    margin:0 0 7px; color:#e2e8f0; font-size:14px;
+}
+.st-ps-preview-dialog .st-ps-preview-message pre {
+    margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#cbd5e1;
+}

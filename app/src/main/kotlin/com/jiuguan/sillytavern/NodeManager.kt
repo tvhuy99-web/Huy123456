@@ -33,7 +33,7 @@ class NodeManager(private val context: Context) {
         private const val VERSION_FILE = "v2_version.txt"
 
         // Current bundle version - bump this to force re-extraction
-        const val BUNDLE_VERSION = "1.19.0-1"
+        const val BUNDLE_VERSION = "1.19.0-2"
     }
 
     private var nodeProcess: Process? = null

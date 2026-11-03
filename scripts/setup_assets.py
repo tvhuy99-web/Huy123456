@@ -162,6 +162,9 @@ def package_sillytavern(branch: str, repo: str):
     # SillyTavern will gracefully degrade when these return empty results.
     create_stub_packages(st_dir / "node_modules")
 
+    # Keep original SillyTavern persistence, add only public getter/save bridge.
+    run([sys.executable, str(PROJECT_ROOT / "scripts" / "patch_preset_bridge.py"), str(st_dir)])
+
     # Also remove node_modules/.bin (Windows symlinks, not needed on Android)
     bin_dir = st_dir / "node_modules" / ".bin"
     if bin_dir.exists():
