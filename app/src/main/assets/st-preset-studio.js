@@ -405,6 +405,7 @@ import('./scripts/openai.js').then(api => {
     function active() {
         const on = source.value === 'openai';
         area.classList.toggle('st-ps-active',on);
+        area.classList.toggle('st-ps-show-prompts',on && tab === 'prompts');
         if (on) {syncPresets();render();}
     }
     source.addEventListener('change',() => setTimeout(active,0));
