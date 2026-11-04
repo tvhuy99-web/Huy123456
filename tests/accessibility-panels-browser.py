@@ -9,8 +9,8 @@ from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 with ZipFile(ROOT/'app/src/main/assets/sillytavern.zip') as archive:
     html=archive.read('public/index.html').decode('utf-8')
-    html=re.sub(r'<script\\b[^>]*>.*?</script>','',html,flags=re.I|re.S)
-    html=re.sub(r'<link\\b[^>]*>','',html,flags=re.I|re.S)
+    html=re.sub(r'<script\b[^>]*>.*?</script>','',html,flags=re.I|re.S)
+    html=re.sub(r'<link\b[^>]*>','',html,flags=re.I|re.S)
     styles=[archive.read(p).decode('utf-8',errors='replace')
         for p in ('public/css/bright.min.css','public/style.css',
                   'public/css/st-tailwind.css','public/css/mobile-styles.css')]
