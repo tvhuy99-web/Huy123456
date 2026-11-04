@@ -73,6 +73,12 @@ with sync_playwright() as p:
             document.getElementById(name).addEventListener('click',()=>
                 window.__nativeActions[name] = (window.__nativeActions[name]||0)+1);
         }
+        document.querySelector('#avatar_controls .chat_lorebook_button')
+            .addEventListener('click',() => window.__nativeActions.chat_lorebook = 1);
+        document.getElementById('char-management-dropdown')
+            .addEventListener('change',event => {
+                window.__nativeActions.dropdown = event.target.value;
+            });
         const panel = document.getElementById('right-nav-panel');
         document.getElementById('rightNavDrawerIcon').addEventListener('click',()=>{
             panel.classList.toggle('closedDrawer');
@@ -171,9 +177,16 @@ with sync_playwright() as p:
     assert editor_actions[:4]==['Xuất thẻ nhân vật','Nhân bản nhân vật',
         'Đổi tên','Lorebook nhân vật'],editor_actions
     assert editor_actions.count('Lorebook nhân vật')==1
+    assert editor_actions.count('Lorebook trò chuyện')==1
     menu.get_by_text('Lorebook nhân vật').click()
     page.wait_for_timeout(100)
     assert page.evaluate('window.__nativeActions.world_button')==1
+    page.locator('#st-cs-editor-options').click()
+    page.get_by_role('dialog').get_by_text('Lorebook trò chuyện').click()
+    assert page.evaluate('window.__nativeActions.chat_lorebook')==1
+    page.locator('#st-cs-editor-options').click()
+    page.get_by_role('dialog').get_by_text('Đổi tên').click()
+    assert page.evaluate('window.__nativeActions.dropdown')=='Rename'
     page.locator('#st-cs-drawer-tab-chat').click()
     assert page.locator('#st-cs-tab-chat').get_attribute('aria-selected')=='true'
     assert page.locator('body.st-cs-editing').count()==0
