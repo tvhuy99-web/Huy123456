@@ -25,7 +25,7 @@ assert '#rm_print_characters_block' in theme
 assert 'new URL(' in source
 assert 'nativeClick(action.id)' in source
 assert 'getElementById' in source
-assert 'characters?.[id]' in source || 'scriptApi.characters?.[id]' in source
+assert 'characters?.[id]' in source or 'scriptApi.characters?.[id]' in source
 assert 'nativeCharacterActions' in source
 assert 'setCompactEditor' in source
 source = source.replace('import(moduleUrl).then(api => {',
