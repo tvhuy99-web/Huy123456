@@ -148,6 +148,7 @@
     '.mes_button', '.mes_edit', '.mes_copy', '.mes_delete', '.mes_swipe_left', '.mes_swipe_right',
     '.mes_regenerate', '.swipe_left', '.swipe_right', '.mes_img_swipe_left', '.mes_img_swipe_right',
     '.character_select', '.group_select', '.bogus_folder_select', '.select_chat_block',
+    '.tag_remove',
     '.renameChatButton', '.deleteChatButton', '.mes_edit_done', '.mes_edit_cancel',
     '[tabindex][onclick]'
   ].join(',');
@@ -233,6 +234,20 @@
     if (el.getAttribute(attr) !== value) el.setAttribute(attr, value);
   }
   function contextLabel(el) {
+    if (el.matches('.tag_remove')) {
+      const tag=el.closest('.tag');
+      const tagName=clean(tag?.querySelector('.tag_name')?.textContent) ||
+        clean(tag?.getAttribute('title'));
+      const filter=Boolean(el.closest('.rm_tag_controls'));
+      return (filter?'Bỏ lọc':'Xóa thẻ')+(tagName?' '+tagName:'');
+    }
+    if (el.matches('.dragClose,.floating_panel_close')) {
+      const named = LABELS[el.id];
+      if (named) return named;
+      const owner=el.closest('.draggable,.drawer-content,[role="dialog"],.popup');
+      const title=clean(owner?.querySelector('h2,h3,[role="heading"],.dragTitle')?.textContent);
+      return title?'Đóng '+title:'Đóng bảng';
+    }
     if (el.matches('.swipe_left,.mes_img_swipe_left')) return 'Xem phản hồi trước';
     if (el.matches('.swipe_right,.mes_img_swipe_right')) return 'Xem phản hồi tiếp theo';
     if (el.matches('.character_select')) {
@@ -348,8 +363,28 @@
       setAttr(el, 'aria-hidden', 'true');
     }
   }
+  function synchronizeClosedDrawers() {
+    // SillyTavern animates its drawers and may leave controls geometrically
+    // present even after the panel is closed. The inert attribute prevents
+    // those controls from becoming TalkBack stops while preserving the nodes
+    // and all click handlers for reopening.
+    for (const drawer of document.querySelectorAll('.drawer-content')) {
+      const forcedEditor=drawer.id==='right-nav-panel' &&
+        document.body.classList.contains('st-cs-editing');
+      const closed=drawer.classList.contains('closedDrawer') &&
+        !drawer.classList.contains('openDrawer') && !forcedEditor;
+      if (closed && !drawer.hasAttribute('inert')) {
+        drawer.setAttribute('inert','');
+        drawer.dataset.stA11yDrawerInert='1';
+      } else if (!closed && drawer.dataset.stA11yDrawerInert==='1') {
+        drawer.removeAttribute('inert');
+        delete drawer.dataset.stA11yDrawerInert;
+      }
+    }
+  }
   function scan() {
     if (!document.body) return;
+    synchronizeClosedDrawers();
     for (const el of document.querySelectorAll(INTERACTIVE)) ensureAction(el);
     for (const el of document.querySelectorAll('img,i.fa,i.fas,i.far,i.fa-solid,i.fa-regular')) {
       hideDecoration(el);
