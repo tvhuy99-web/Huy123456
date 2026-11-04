@@ -44,8 +44,10 @@
         const heading = make('h3',title);
         heading.setAttribute('aria-hidden','true');
         dialog.append(heading);
+        let accepted=false;
         for (const item of items) {
             dialog.append(button(item.label,() => {
+                accepted=true;
                 dialog.close();
                 item.run();
             }));
@@ -53,7 +55,10 @@
         dialog.append(button('Đóng',()=>dialog.close()));
         dialog.addEventListener('close',() => {
             dialog.remove();
-            if (returnFocus?.isConnected) returnFocus.focus({preventScroll:true});
+            // Do not steal focus from a native confirmation/edit popup.
+            if (!accepted && returnFocus?.isConnected) {
+                returnFocus.focus({preventScroll:true});
+            }
         });
         document.body.append(dialog);
         dialog.showModal();
@@ -69,12 +74,18 @@
     selectorRow.append(select,optionsButton);
     const filterRow = make('div',undefined,'st-wi-filter-row');
     search.setAttribute('placeholder','Tìm kiếm mục');
+    search.removeAttribute('data-i18n');
     search.removeAttribute('aria-label');
     search.removeAttribute('title');
     sort.setAttribute('aria-label','Sắp xếp mục');
     filterRow.append(search,sort);
     toolbar.append(selectorRow,filterRow);
     holder.prepend(toolbar);
+    const nativeHeading = panel.querySelector('h3 [data-i18n="Worlds/Lorebooks"]');
+    if (nativeHeading) {
+        nativeHeading.textContent='Lorebook';
+        nativeHeading.removeAttribute('data-i18n');
+    }
 
     // Keep the original global activation configuration accessible, but
     // collapsed so it does not precede every Lorebook entry in TalkBack.
@@ -102,11 +113,21 @@
         ['Áp dụng thứ tự đang xem','world_apply_current_sorting',true],
         ['Làm mới','world_refresh',true],
     ];
+    function expandAllEntries(expanded) {
+        for (const row of list.querySelectorAll('.st-wi-entry')) {
+            if (row.classList.contains('st-wi-editing') !== expanded) toggleEdit(row);
+        }
+    }
     function openOptions() {
         const selected = !!bookName();
         menu('Tùy chọn Lorebook', nativeActions
             .filter(([,id,needsBook]) => byId(id) && (!needsBook || selected))
-            .map(([label,id]) => ({ label, run:()=>byId(id)?.click() })),
+            .map(([label,id]) => ({
+                label,
+                run:() => id === 'OpenAllWIEntries' ? expandAllEntries(true) :
+                    id === 'CloseAllWIEntries' ? expandAllEntries(false) :
+                    byId(id)?.click()
+            })),
             optionsButton);
     }
 
