@@ -354,8 +354,9 @@
         const nativeCharacterActions = [
             { label:'Xuất thẻ nhân vật', id:'export_button' },
             { label:'Nhân bản nhân vật', id:'dupe_button' },
-            { label:'Đổi tên', operation:'rename' },
+            { label:'Đổi tên', option:'renameCharButton' },
             { label:'Lorebook nhân vật', id:'world_button' },
+            { label:'Lorebook trò chuyện', selector:'#avatar_controls .chat_lorebook_button' },
             { label:'Liên kết Lorebook', option:'set_character_world' },
             { label:'Nhập Lorebook từ thẻ', option:'import_character_info' },
             { label:'Lịch sử trò chuyện', id:'option_select_chat' },
@@ -380,8 +381,8 @@
         }
         function characterMenuItems(id) {
             return nativeCharacterActions
-                .filter(item => item.operation === 'rename' ||
-                    (item.id && byId(item.id)) ||
+                .filter(item => (item.id && byId(item.id)) ||
+                    (item.selector && document.querySelector(item.selector)) ||
                     (item.option && Array.from(byId('char-management-dropdown')?.options || [])
                         .some(option => option.id === item.option)))
                 .map(item => ({
@@ -398,18 +399,12 @@
                     await scriptApi.selectCharacterById(id);
                 }
                 if (currentCharacterId() !== id) return;
-                if (action.operation === 'rename') {
-                    setView('edit');
-                    const nameInput = byId('character_name_pole');
-                    nameInput?.focus();
-                    nameInput?.select();
-                    return;
-                }
                 // Use the original native handlers and their confirmations.
                 // Opening edit only prepares the native form for off-screen cards.
                 if (selectedView !== 'edit') setView('edit');
                 else openDrawer();
                 if (action.id) nativeClick(action.id);
+                else if (action.selector) document.querySelector(action.selector)?.click();
                 else if (action.option) nativeCharacterOption(action.option);
             } catch (error) {
                 console.error('[Character Studio] Native action failed',error);
