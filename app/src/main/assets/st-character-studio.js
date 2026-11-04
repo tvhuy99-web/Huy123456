@@ -176,7 +176,9 @@
         function popup(title, choices, focus) {
             const dialog = make('dialog', undefined, 'st-cs-dialog');
             dialog.setAttribute('aria-label', title);
-            dialog.append(make('h3', title));
+            const visibleTitle = make('h3',title);
+            visibleTitle.setAttribute('aria-hidden','true');
+            dialog.append(visibleTitle);
             for (const item of choices) {
                 dialog.append(button(item.label, () => {
                     dialog.close();
