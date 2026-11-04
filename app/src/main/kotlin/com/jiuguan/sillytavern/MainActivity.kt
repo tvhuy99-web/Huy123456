@@ -29,6 +29,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private var speechBridge: AndroidSpeechBridge? = null
+    private var backgroundGenerationActive = false
+    private var activityResumed = false
+    private var webViewSuspended = false
     private lateinit var progressBar: ProgressBar
     private lateinit var fullscreenContainer: FrameLayout
     private var hasInjectedMobileCSS = false
@@ -86,6 +89,9 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        // Prefer retaining the renderer during an active streamed generation.
+        // Android may still reclaim the process under severe memory pressure.
+        webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT,true)
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -113,6 +119,7 @@ class MainActivity : AppCompatActivity() {
                 injectMobileOptimizations(view)
                 injectDebugPanel(view)
                 injectAndroidAccessibility(view)
+                injectBackgroundGeneration(view)
                 injectPresetStudio(view)
                 injectCharacterStudio(view)
                 injectLorebookStudio(view)
@@ -184,6 +191,20 @@ class MainActivity : AppCompatActivity() {
         // Register JavaScript interface for downloads
         webView.addJavascriptInterface(DownloadInterface(), "AndroidDownload")
         webView.addJavascriptInterface(AndroidDiagnosticsBridge(applicationContext), "STAndroidDiagnostics")
+        webView.addJavascriptInterface(AndroidGenerationBridge(applicationContext) { active ->
+            backgroundGenerationActive=active
+            if (!activityResumed) {
+                // Keep WebView processing its stream while the user presses
+                // Home; restore the usual lifecycle after generation ends.
+                if (active && webViewSuspended) {
+                    webView.onResume()
+                    webViewSuspended=false
+                } else if (!active && !webViewSuspended) {
+                    webView.onPause()
+                    webViewSuspended=true
+                }
+            }
+        }, "STAndroidGeneration")
         speechBridge = AndroidSpeechBridge(applicationContext) { utteranceId, success, reason ->
             if (!isFinishing && !isDestroyed) {
                 val js = "window.__stAndroidTtsComplete?.(" +
@@ -312,6 +333,18 @@ class MainActivity : AppCompatActivity() {
             view.evaluateJavascript(script, null)
         } catch (e: Exception) {
             android.util.Log.e("SillyTavernA11y", "Accessibility script unavailable", e)
+        }
+    }
+
+    // Connect SillyTavern's generation lifecycle to the foreground service.
+    private fun injectBackgroundGeneration(view: WebView?) {
+        view ?: return
+        try {
+            val script = assets.open("st-background-generation.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            view.evaluateJavascript(script,null)
+        } catch (error: Exception) {
+            android.util.Log.e("BackgroundGeneration","Unable to install generation bridge",error)
         }
     }
 
@@ -835,15 +868,22 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        webView.onPause()
+        activityResumed=false
+        if (!backgroundGenerationActive) {
+            webView.onPause()
+            webViewSuspended=true
+        }
     }
 
     override fun onResume() {
         super.onResume()
+        activityResumed=true
         webView.onResume()
+        webViewSuspended=false
     }
 
     override fun onDestroy() {
+        NodeService.setGenerationActive(applicationContext,false)
         speechBridge?.shutdown()
         webView.destroy()
         super.onDestroy()

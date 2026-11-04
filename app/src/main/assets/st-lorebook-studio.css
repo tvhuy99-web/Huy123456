@@ -1,3 +1,16 @@
+/* Native Lorebook sort retains events but has no read-only TalkBack stop. */
+#WorldInfo #st-lorebook-toolbar #world_info_sort_order[hidden] {
+    display:none!important;
+}
+#WorldInfo #st-lorebook-toolbar #st-wi-sort {
+    display:block;flex:1 1 170px;min-width:0;
+    text-align:left;box-sizing:border-box;min-height:44px;
+    padding:9px 12px;margin:0;border-radius:9px;
+    border:1px solid var(--SmartThemeBorderColor);
+    background:var(--SmartThemeBlurTintColor);
+    color:var(--SmartThemeBodyColor);font:inherit;
+}
+
 /* Compact Lorebook presentation. All original ST controls stay in the DOM. */
 #WorldInfo #st-lorebook-toolbar {
     display:flex;flex-direction:column;gap:10px;padding:8px 4px 10px;

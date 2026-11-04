@@ -77,8 +77,38 @@
     search.removeAttribute('data-i18n');
     search.removeAttribute('aria-label');
     search.removeAttribute('title');
-    sort.setAttribute('aria-label','Sắp xếp mục');
-    filterRow.append(search,sort);
+    // Like the character picker, this native select yields both an
+    // unclickable selected-option stop and an actionable TalkBack stop.
+    // Keep its exact value/change handlers but offer just one visible action.
+    sort.hidden=true;
+    sort.setAttribute('aria-hidden','true');
+    sort.tabIndex=-1;
+    const sortButton=button('',() => {
+        menu('Sắp xếp Lorebook',Array.from(sort.options)
+            .map((option,index)=>({option,index}))
+            .filter(({option})=>!option.hidden && !option.disabled)
+            .map(({option,index})=>({
+                label:option.textContent.trim(),
+                run:()=>{
+                    sort.selectedIndex=index;
+                    sort.dispatchEvent(new Event('change',{bubbles:true}));
+                    syncSortName();
+                }
+            })),sortButton);
+    },'st-wi-sort-button');
+    sortButton.id='st-wi-sort';
+    sortButton.setAttribute('aria-haspopup','dialog');
+    const syncSortName=()=>{
+        sortButton.textContent='Sắp xếp: '+
+            (sort.selectedOptions[0]?.textContent?.trim()||'Chưa chọn');
+    };
+    sort.addEventListener('change',syncSortName);
+    new MutationObserver(syncSortName).observe(sort,{
+        childList:true,subtree:true,attributes:true,
+        attributeFilter:['selected','hidden','label']
+    });
+    filterRow.append(search,sort,sortButton);
+    syncSortName();
     toolbar.append(selectorRow,filterRow);
     holder.prepend(toolbar);
     const nativeHeading = panel.querySelector('h3 [data-i18n="Worlds/Lorebooks"]');

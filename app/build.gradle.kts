@@ -11,8 +11,8 @@ android {
         applicationId = "com.jiuguan.sillytavern.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 11912
-        versionName = "1.19.0-preview.12"
+        versionCode = 11913
+        versionName = "1.19.0-preview.13"
 
         ndk {
             // ARM64 covers 99%+ of modern Android phones
