@@ -127,6 +127,9 @@ with sync_playwright() as p:
     assert page.locator('#form_create').count() == 1
     assert page.locator('#st-character-toolbar #character_sort_order').count() == 1
     assert page.locator('#st-character-toolbar #character_search_bar').count() == 1
+    assert page.locator('#st-character-toolbar .st-cs-label').count() == 0
+    assert page.locator('#character_sort_order').get_attribute('aria-label') == 'Sắp xếp nhân vật'
+    assert page.locator('#character_search_bar').get_attribute('aria-label') is None
     sort_labels=page.locator('#character_sort_order option:not([hidden])').all_inner_texts()
     assert sort_labels == ['A-Z','Z-A','Mới nhất','Cũ nhất','Yêu thích','Gần đây',
         'Nhiều cuộc trò chuyện nhất','Ít cuộc trò chuyện nhất',
@@ -143,7 +146,35 @@ with sync_playwright() as p:
     assert page.evaluate('window.__nativeActions.character_import_button')==1
     card=page.locator('#rm_print_characters_block .character_select').first
     assert card.get_attribute('role')=='button'
-    assert card.locator('.ch_name').get_attribute('role')=='heading'
+    assert card.get_attribute('aria-label')=='Mở trò chuyện với Alice'
+    assert card.locator('.character_name_block').get_attribute('aria-hidden')=='true'
+    assert card.locator('.avatar').get_attribute('aria-hidden')=='true'
+    assert card.locator('.ch_name').get_attribute('role') is None
+    # Pager elements may exist in the DOM without being visible when only
+    # one page is available. Multi-page navigation remains reachable.
+    page.evaluate("""() => {
+        const container=document.querySelector('#rm_print_characters_pagination');
+        container.insertAdjacentHTML('beforeend',
+            '<div class="paginationjs"><ul class="paginationjs-pages">' +
+            '<li class="paginationjs-prev disabled"><a href="#">‹</a></li>' +
+            '<li class="paginationjs-next disabled"><a href="#">›</a></li>' +
+            '</ul></div>');
+    }""")
+    page.wait_for_timeout(100)
+    assert page.locator('#rm_print_characters_pagination .paginationjs').is_hidden()
+    page.evaluate("""() => {
+        const container=document.querySelector('#rm_print_characters_pagination');
+        container.querySelector('.paginationjs').remove();
+        container.insertAdjacentHTML('beforeend',
+            '<div class="paginationjs"><ul class="paginationjs-pages">' +
+            '<li class="paginationjs-prev disabled"><a href="#">‹</a></li>' +
+            '<li class="paginationjs-next"><a href="#">›</a></li>' +
+            '</ul></div>');
+    }""")
+    page.wait_for_timeout(100)
+    assert page.locator('#rm_print_characters_pagination .paginationjs').is_visible()
+    assert page.locator('.paginationjs-next a').get_attribute('aria-label')=='Trang sau'
+    assert page.locator('.paginationjs-prev a').get_attribute('aria-hidden')=='true'
     card.click()
     page.wait_for_timeout(290)
     assert page.locator('#st-character-tabs').is_visible()
@@ -207,5 +238,5 @@ with sync_playwright() as p:
     assert page.locator('#st-cs-active-name').inner_text()=='Nhóm A'
     assert page.locator('#rm_buttons_container #extension-owned-button').count()==1
     assert not errors,errors
-    print('Character Studio compact editor, shared actions, restored native fields, group and extensions: PASS')
+    print('Character Studio compact editor, shared actions, pager accessibility and native fields: PASS')
     browser.close()
