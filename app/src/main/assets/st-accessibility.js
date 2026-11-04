@@ -356,6 +356,10 @@
     const target = event.target;
     if (!(target instanceof Element) ||
         !target.matches(INTERACTIVE) || !available(target) || withinNamedCard(target)) return;
+    // Character Studio provides its own keyboard handler for card entries.
+    // Running both handlers would open the same character twice.
+    if (target.matches('.character_select,.group_select') &&
+        target.dataset?.stCsReady === '1') return;
     if (target.matches('button,input,textarea,select,a,[contenteditable="true"]')) return;
     if (!target.hasAttribute('data-st-a11y-key-handler')) return;
     event.preventDefault();
