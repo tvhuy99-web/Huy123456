@@ -214,3 +214,5 @@ body.st-cs-editing #st-cs-extra-fields #character_cross {
 #rm_print_characters_pagination.st-cs-single-page .paginationjs {
     display:none!important;
 }
+
+body.st-cs-editing #right-nav-panel #rm_button_selected_ch {display:none!important}
