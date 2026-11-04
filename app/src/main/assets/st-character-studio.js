@@ -183,6 +183,80 @@
         drawerTabs.append(drawerName,drawerRow);
         originalPanel.insertBefore(drawerTabs,byId('rm_PinAndTabs'));
 
+        const editorMenu = make('div',undefined,'st-cs-editor-menu');
+        editorMenu.id = 'st-cs-editor-menu';
+        editorMenu.hidden = true;
+        const editorOptions = button('Tùy chọn khác', () => {
+            const id = currentCharacterId();
+            if (id === null) return;
+            popup(selectedCharacterName(), characterMenuItems(id), editorOptions);
+        });
+        editorOptions.id = 'st-cs-editor-options';
+        editorMenu.append(editorOptions);
+        drawerTabs.after(editorMenu);
+
+        // Moving the original live form controls preserves field values,
+        // native listeners and extension hooks. Restore their exact DOM
+        // positions outside the compact character editor.
+        const compactIds = [
+            'spoiler_free_desc', 'descriptionWrapper', 'tags_div',
+            'scenario_div', 'depth_prompt_div', 'character_popup'
+        ];
+        const nativePositions = new Map();
+        for (const id of compactIds) {
+            const node = byId(id);
+            if (!node?.parentNode) continue;
+            const marker = document.createComment('native position: ' + id);
+            node.parentNode.insertBefore(marker,node);
+            nativePositions.set(id,{node,marker});
+        }
+        const extraButton = button('Hiển thị thêm', () => {
+            const expanded = extraFields.hidden;
+            extraFields.hidden = !expanded;
+            extraButton.textContent = expanded ? 'Thu gọn' : 'Hiển thị thêm';
+            extraButton.setAttribute('aria-expanded',String(expanded));
+            document.body.classList.toggle('st-cs-more-open', expanded);
+        },'st-cs-extra-toggle');
+        extraButton.id = 'st-cs-extra-toggle';
+        extraButton.hidden = true;
+        extraButton.setAttribute('aria-controls','st-cs-extra-fields');
+        extraButton.setAttribute('aria-expanded','false');
+        const extraFields = make('div',undefined,'st-cs-extra-fields');
+        extraFields.id = 'st-cs-extra-fields';
+        extraFields.hidden = true;
+        const hiddenFormFields = byId('hidden-divs');
+        if (hiddenFormFields) {
+            createForm.insertBefore(extraButton, hiddenFormFields);
+            createForm.insertBefore(extraFields, hiddenFormFields);
+        }
+        let compactActive = false;
+        function setCompactEditor(active) {
+            if (active === compactActive) return;
+            if (active) {
+                if (!hiddenFormFields || nativePositions.size !== compactIds.length) return;
+                for (const id of ['scenario_div','depth_prompt_div']) {
+                    createForm.insertBefore(nativePositions.get(id).node,extraButton);
+                }
+                for (const id of ['spoiler_free_desc','descriptionWrapper','tags_div',
+                    'character_popup']) {
+                    extraFields.append(nativePositions.get(id).node);
+                }
+                extraButton.hidden = false;
+                extraFields.hidden = true;
+                extraButton.textContent = 'Hiển thị thêm';
+                extraButton.setAttribute('aria-expanded','false');
+            } else {
+                for (const id of compactIds) {
+                    const item = nativePositions.get(id);
+                    if (item?.marker.parentNode) item.marker.after(item.node);
+                }
+                extraButton.hidden = true;
+                extraFields.hidden = true;
+                extraButton.setAttribute('aria-expanded','false');
+                document.body.classList.remove('st-cs-more-open');
+            }
+            compactActive = active;
+        }
 
         let scriptApi = null;
         let groupApi = null;
@@ -221,6 +295,12 @@
         function openDrawer() {
             if (isDrawerClosed()) byId('rightNavDrawerIcon')?.click();
         }
+        function currentCharacterId() {
+            const id = Number(scriptApi?.this_chid);
+            return scriptApi?.this_chid !== undefined &&
+                scriptApi?.this_chid !== null &&
+                Number.isInteger(id) && scriptApi?.characters?.[id] ? id : null;
+        }
         function selectedCharacterName() {
             if (!scriptApi) return '';
             const ch = scriptApi.this_chid;
@@ -239,6 +319,7 @@
             drawerName.textContent = name;
             tabs.hidden = !name;
             drawerTabs.hidden = !name;
+            editorMenu.hidden = currentCharacterId() === null;
             if (name) {
                 chatButton.setAttribute('aria-label','Trò chuyện với ' + name);
                 editButton.setAttribute('aria-label','Chỉnh sửa ' + name);
@@ -247,12 +328,18 @@
         function setView(view, {fromCard = false} = {}) {
             selectedView = view;
             syncSelected();
+            const compact = view === 'edit' && currentCharacterId() !== null;
+            setCompactEditor(compact);
+            document.body.classList.toggle('st-cs-editing',compact);
             for (const [node,which] of [[chatButton,'chat'],[editButton,'edit'],
                 [drawerChat,'chat'],[drawerEdit,'edit']]) {
                 node.setAttribute('aria-selected', String(view === which));
                 node.tabIndex = view === which ? 0 : -1;
             }
-            if (!activeName.textContent) return;
+            if (!activeName.textContent) {
+                closeDrawer();
+                return;
+            }
             if (view === 'chat') {
                 closeDrawer();
                 if (!fromCard) chat.focus?.({preventScroll:true});
@@ -262,34 +349,69 @@
             }
         }
 
-        async function selectedNativeAction(card, operation) {
-            if (!scriptApi || nativeActionsPending) return;
-            const id = Number(card.dataset.chid);
-            if (!Number.isInteger(id) || !scriptApi.characters?.[id]) return;
+        const nativeCharacterActions = [
+            { label:'Xuất thẻ nhân vật', id:'export_button' },
+            { label:'Nhân bản nhân vật', id:'dupe_button' },
+            { label:'Đổi tên', operation:'rename' },
+            { label:'Lorebook nhân vật', id:'world_button' },
+            { label:'Liên kết Lorebook', option:'set_character_world' },
+            { label:'Nhập Lorebook từ thẻ', option:'import_character_info' },
+            { label:'Lịch sử trò chuyện', id:'option_select_chat' },
+            { label:'Yêu thích', id:'favorite_button' },
+            { label:'Persona liên kết', id:'char_connections_button' },
+            { label:'Thiết lập riêng', option:'set_chat_character_settings' },
+            { label:'Chuyển thành Persona', option:'convert_to_persona' },
+            { label:'Liên kết nguồn', option:'character_source' },
+            { label:'Thay thế / Cập nhật', option:'replace_update' },
+            { label:'Nhập thẻ tag', option:'import_tags' },
+            { label:'Đặt làm trợ lý', option:'set_as_assistant' },
+            { label:'Xóa nhân vật', id:'delete_button' },
+        ];
+        function nativeCharacterOption(optionId) {
+            const option = Array.from(byId('char-management-dropdown')?.options || [])
+                .find(item => item.id === optionId);
+            if (!option) return false;
+            const dropdown = option.parentElement;
+            dropdown.value = option.value;
+            dropdown.dispatchEvent(new Event('change',{bubbles:true}));
+            return true;
+        }
+        function characterMenuItems(id) {
+            return nativeCharacterActions
+                .filter(item => item.operation === 'rename' ||
+                    (item.id && byId(item.id)) ||
+                    (item.option && Array.from(byId('char-management-dropdown')?.options || [])
+                        .some(option => option.id === item.option)))
+                .map(item => ({
+                    label:item.label,
+                    run:()=>selectedNativeAction(id,item),
+                }));
+        }
+        async function selectedNativeAction(id, action) {
+            if (!scriptApi || nativeActionsPending || !Number.isInteger(id) ||
+                !scriptApi.characters?.[id]) return;
             nativeActionsPending = true;
             try {
-                await scriptApi.selectCharacterById(id);
-                if (String(scriptApi.this_chid) !== String(id)) return;
-                if (operation === 'rename') {
+                if (currentCharacterId() !== id) {
+                    await scriptApi.selectCharacterById(id);
+                }
+                if (currentCharacterId() !== id) return;
+                if (action.operation === 'rename') {
                     setView('edit');
                     const nameInput = byId('character_name_pole');
                     nameInput?.focus();
                     nameInput?.select();
                     return;
                 }
-                // Export / duplicate / delete are dispatched to the exact
-                // native handlers, retaining native confirmation and format.
-                const actions = {
-                    export:'export_button',
-                    duplicate:'dupe_button',
-                    delete:'delete_button',
-                };
-                const target = actions[operation];
-                if (target) {
+                // Use the original native handlers and their confirmations.
+                // Opening edit only prepares the native form for off-screen cards.
+                if (selectedView !== 'edit') setView('edit');
+                else {
                     openDrawer();
                     byId('rm_button_selected_ch')?.click();
-                    nativeClick(target);
                 }
+                if (action.id) nativeClick(action.id);
+                else if (action.option) nativeCharacterOption(action.option);
             } catch (error) {
                 console.error('[Character Studio] Native action failed',error);
                 window.alert('Không thể thực hiện thao tác với nhân vật.');
@@ -298,13 +420,10 @@
             }
         }
         function openCardActions(card) {
+            const id = Number(card.dataset.chid);
+            if (!Number.isInteger(id) || !scriptApi?.characters?.[id]) return;
             const name = card.querySelector('.ch_name')?.textContent?.trim() || 'Nhân vật';
-            popup(name, [
-                {label:'Xuất thẻ nhân vật',run:()=>selectedNativeAction(card,'export')},
-                {label:'Nhân bản nhân vật',run:()=>selectedNativeAction(card,'duplicate')},
-                {label:'Xóa nhân vật',run:()=>selectedNativeAction(card,'delete')},
-                {label:'Đổi tên',run:()=>selectedNativeAction(card,'rename')},
-            ],card);
+            popup(name, characterMenuItems(id),card);
         }
 
         // Capture prevents a long press from also triggering the delegated
