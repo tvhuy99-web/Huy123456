@@ -9,13 +9,14 @@
     const byId = id => document.getElementById(id);
     const panel = byId('WorldInfo');
     const popup = byId('world_popup');
+    const holder = byId('wi-holder');
     const list = byId('world_popup_entries_list');
     const select = byId('world_editor_select');
     const search = byId('world_info_search');
     const sort = byId('world_info_sort_order');
     const nativeSettings = byId('wiTopBlock');
     const nativePager = byId('world_info_pagination');
-    if (![panel,popup,list,select,search,sort,nativeSettings,nativePager].every(Boolean)) return;
+    if (![panel,popup,holder,list,select,search,sort,nativeSettings,nativePager].every(Boolean)) return;
     window.__stLorebookStudioInstalled = true;
 
     const make = (tag, text, cls) => {
@@ -73,7 +74,7 @@
     sort.setAttribute('aria-label','Sắp xếp mục');
     filterRow.append(search,sort);
     toolbar.append(selectorRow,filterRow);
-    popup.prepend(toolbar);
+    holder.prepend(toolbar);
 
     // Keep the original global activation configuration accessible, but
     // collapsed so it does not precede every Lorebook entry in TalkBack.
@@ -221,6 +222,7 @@
 
         let holdTimer, releaseTimer;
         const showMenu = () => {
+            if (document.querySelector('.st-wi-dialog[open]')) return;
             titleButton.dataset.suppressClick='1';
             clearTimeout(releaseTimer);
             releaseTimer=setTimeout(() => {titleButton.dataset.suppressClick='0';},1000);
