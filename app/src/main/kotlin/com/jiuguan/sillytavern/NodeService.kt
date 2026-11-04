@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
@@ -22,6 +23,21 @@ class NodeService : Service() {
 
         private const val ACTION_START = "com.jiuguan.sillytavern.START"
         private const val ACTION_STOP = "com.jiuguan.sillytavern.STOP"
+        private const val ACTION_GENERATION_STATE = "com.jiuguan.sillytavern.GENERATION_STATE"
+        private const val WAKE_LOCK_TIMEOUT_MS = 15 * 60 * 1000L
+
+        /** Refresh background generation protection while the server is running. */
+        fun setGenerationActive(context: Context, active: Boolean) {
+            if (!isRunning) return
+            try {
+                context.startService(Intent(context,NodeService::class.java).apply {
+                    action=ACTION_GENERATION_STATE
+                    putExtra("generating",active)
+                })
+            } catch (error: Exception) {
+                Log.w(TAG,"Unable to deliver generation status",error)
+            }
+        }
 
         /** Convenience: start the service */
         fun start(context: Context) {
@@ -69,6 +85,33 @@ class NodeService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var watchdogJob: Job? = null
     private var startupJob: Job? = null
+    private var generationWakeLock: PowerManager.WakeLock? = null
+    private var generating = false
+
+    private fun setGenerationState(active: Boolean) {
+        if (active && isRunning) {
+            val lock = generationWakeLock ?: run {
+                val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+                power.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "${packageName}:SillyTavernGeneration"
+                ).apply {setReferenceCounted(false)}.also { generationWakeLock=it }
+            }
+            // Time-bounded, refreshed by STREAM_TOKEN_RECEIVED events.
+            // A lost WebView cannot hold a lock indefinitely.
+            lock.acquire(WAKE_LOCK_TIMEOUT_MS)
+            if (!generating) {
+                generating=true
+                updateNotification("AI đang tạo phản hồi, có thể dùng ứng dụng khác")
+            }
+        } else {
+            if (generationWakeLock?.isHeld==true) generationWakeLock?.release()
+            if (generating) {
+                generating=false
+                if (isRunning) updateNotification("SillyTavern đang chạy")
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -80,8 +123,13 @@ class NodeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                setGenerationState(false)
                 stopSelf()
                 return START_NOT_STICKY
+            }
+            ACTION_GENERATION_STATE -> {
+                setGenerationState(intent?.getBooleanExtra("generating",false)==true)
+                return START_STICKY
             }
             else -> {
                 startForeground(NOTIFICATION_ID, buildNotification("正在启动酒馆..."))
@@ -94,6 +142,7 @@ class NodeService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        setGenerationState(false)
         isRunning = false
         isStarting = false
         startupJob?.cancel()
@@ -121,7 +170,9 @@ class NodeService : Service() {
                 if (error == null) {
                     isRunning = true
                     lastStartError = null
-                    updateNotification("SillyTavern 运行中 · ${nodeManager.serverUrl}")
+                    updateNotification(if (generating)
+                            "AI đang tạo phản hồi, có thể dùng ứng dụng khác"
+                            else "SillyTavern đang chạy · ${nodeManager.serverUrl}")
                     startWatchdog()
                     Log.i(TAG, "Server started successfully")
                 } else {
@@ -159,7 +210,9 @@ class NodeService : Service() {
                     if (restartError == null) {
                         isRunning = true
                         lastStartError = null
-                        updateNotification("SillyTavern 运行中 · ${nodeManager.serverUrl}")
+                        updateNotification(if (generating)
+                            "AI đang tạo phản hồi, có thể dùng ứng dụng khác"
+                            else "SillyTavern đang chạy · ${nodeManager.serverUrl}")
                     } else {
                         lastStartError = restartError
                         updateNotification("重启失败，请重新打开APP")
