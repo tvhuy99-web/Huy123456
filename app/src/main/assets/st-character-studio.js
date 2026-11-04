@@ -397,6 +397,8 @@
                 view === 'edit' && currentCharacterId() !== null
             );
             document.body.classList.toggle('st-cs-editing',compact);
+            // Keep the covered chat and duplicate tab strip out of TalkBack.
+            chatShell.inert = compact;
             for (const [node,which] of [[chatButton,'chat'],[editButton,'edit'],
                 [drawerChat,'chat'],[drawerEdit,'edit']]) {
                 node.setAttribute('aria-selected', String(view === which));
