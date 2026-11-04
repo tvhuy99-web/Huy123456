@@ -318,6 +318,7 @@
         listTimer=setTimeout(decorateEntries,90);
     }
     new MutationObserver(scheduleEntries).observe(list,{childList:true,subtree:true});
-    select.addEventListener('change',scheduleEntries);
+    // Native editor replaces the list on selection. Observing that render
+    // avoids briefly decorating the previous book with the next book's data.
     scheduleEntries();
 })();
