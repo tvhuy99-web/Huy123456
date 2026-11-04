@@ -132,7 +132,7 @@ class NodeService : Service() {
                 return START_STICKY
             }
             else -> {
-                startForeground(NOTIFICATION_ID, buildNotification("正在启动酒馆..."))
+                startForeground(NOTIFICATION_ID, buildNotification("Đang khởi động SillyTavern..."))
                 startNodeServer()
                 return START_STICKY
             }
@@ -177,13 +177,13 @@ class NodeService : Service() {
                     Log.i(TAG, "Server started successfully")
                 } else {
                     lastStartError = error
-                    updateNotification("启动失败")
+                    updateNotification("Khởi động máy chủ thất bại")
                     Log.e(TAG, "Failed to start server: $error")
                     DiagnosticStore.record(applicationContext, "error", "node", error)
                 }
             } catch (e: Exception) {
                 lastStartError = e.message ?: e.javaClass.simpleName
-                updateNotification("启动出错: ${e.message}")
+                updateNotification("Lỗi khởi động: ${e.message}")
                 Log.e(TAG, "Error starting server", e)
                 DiagnosticStore.record(applicationContext, "error", "node",
                     e.message ?: e.javaClass.simpleName)
@@ -204,7 +204,7 @@ class NodeService : Service() {
                     DiagnosticStore.record(applicationContext, "error", "node",
                         "Máy chủ Node.js dừng bất ngờ, đang khởi động lại")
                     isRunning = false
-                    updateNotification("正在重启服务...")
+                    updateNotification("Đang khởi động lại máy chủ...")
                     delay(1000)
                     val restartError = nodeManager.startServer()
                     if (restartError == null) {
@@ -215,7 +215,7 @@ class NodeService : Service() {
                             else "SillyTavern đang chạy · ${nodeManager.serverUrl}")
                     } else {
                         lastStartError = restartError
-                        updateNotification("重启失败，请重新打开APP")
+                        updateNotification("Khởi động lại thất bại, hãy mở ứng dụng")
                         break
                     }
                 }
@@ -227,10 +227,10 @@ class NodeService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "SillyTavern 服务",
+                "Dịch vụ SillyTavern",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "SillyTavern 后台运行通知"
+                description = "Máy chủ SillyTavern hoạt động khi chuyển ứng dụng"
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)
@@ -258,12 +258,12 @@ class NodeService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SillyTavern 酒馆")
+            .setContentTitle("SillyTavern")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .setContentIntent(openPending)
-            .addAction(android.R.drawable.ic_media_pause, "停止", stopPending)
+            .addAction(android.R.drawable.ic_media_pause, "Dừng máy chủ", stopPending)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
