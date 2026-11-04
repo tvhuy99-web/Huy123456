@@ -231,9 +231,9 @@
         }
         let compactActive = false;
         function setCompactEditor(active) {
-            if (active === compactActive) return;
+            if (active === compactActive) return compactActive;
             if (active) {
-                if (!hiddenFormFields || nativePositions.size !== compactIds.length) return;
+                if (!hiddenFormFields || nativePositions.size !== compactIds.length) return false;
                 for (const id of ['scenario_div','depth_prompt_div']) {
                     createForm.insertBefore(nativePositions.get(id).node,extraButton);
                 }
@@ -256,6 +256,7 @@
                 document.body.classList.remove('st-cs-more-open');
             }
             compactActive = active;
+            return compactActive;
         }
 
         let scriptApi = null;
@@ -328,8 +329,9 @@
         function setView(view, {fromCard = false} = {}) {
             selectedView = view;
             syncSelected();
-            const compact = view === 'edit' && currentCharacterId() !== null;
-            setCompactEditor(compact);
+            const compact = setCompactEditor(
+                view === 'edit' && currentCharacterId() !== null
+            );
             document.body.classList.toggle('st-cs-editing',compact);
             for (const [node,which] of [[chatButton,'chat'],[editButton,'edit'],
                 [drawerChat,'chat'],[drawerEdit,'edit']]) {
@@ -406,10 +408,7 @@
                 // Use the original native handlers and their confirmations.
                 // Opening edit only prepares the native form for off-screen cards.
                 if (selectedView !== 'edit') setView('edit');
-                else {
-                    openDrawer();
-                    byId('rm_button_selected_ch')?.click();
-                }
+                else openDrawer();
                 if (action.id) nativeClick(action.id);
                 else if (action.option) nativeCharacterOption(action.option);
             } catch (error) {
@@ -481,7 +480,12 @@
                 if (!nativeActionsPending) setView('chat',{fromCard:true});
             });
             api.eventSource.on(api.event_types.CHARACTER_DELETED,()=>{
-                setTimeout(syncSelected,0);
+                setTimeout(() => {
+                    syncSelected();
+                    if (selectedView === 'edit' && currentCharacterId() === null) {
+                        setView('chat',{fromCard:true});
+                    }
+                },0);
             });
             api.eventSource.on(api.event_types.APP_READY,()=>syncSelected());
             setTimeout(syncSelected,500);
