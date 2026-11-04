@@ -29,6 +29,7 @@
     };
     const clean = value => String(value ?? '').trim();
     let apiPromise;
+    let extensionApi = null;
     const api = () => apiPromise ||= import(
         new URL('scripts/extensions.js', document.baseURI).href
     );
@@ -86,8 +87,8 @@
         list.hidden=modeName!=='list';
         search.hidden=modeName!=='list';
         backButton.hidden=modeName==='list';
-        backButton.focus({preventScroll:true});
         if (modeName==='list') optionsButton.focus({preventScroll:true});
+        else backButton.focus({preventScroll:true});
     }
     function showList() { mode('list'); }
 
@@ -144,18 +145,16 @@
     async function nativeManage(name,actionClass='') {
         const externalId=name.replace(/^third-party/,'');
         nativeManager.click();
-        // The original manager constructs its rows asynchronously and owns
-        // authorization, confirmation, update and deletion behavior.
-        if (!actionClass) return;
+        // Original manager owns authorization, confirmation and persistence.
+        if (!name) return;
         const getTarget=() => {
             const root=document.querySelector('.extensions_info');
-            const row=Array.from(root?.querySelectorAll('.extension_block') || [])
-                .find(el => el.dataset.name===externalId);
-            return row?.querySelector('.'+actionClass) || null;
+            return Array.from(root?.querySelectorAll('.extension_block') || [])
+                .find(el => el.dataset.name===externalId) || null;
         };
-        let target=getTarget();
-        if (!target) {
-            target=await new Promise(resolve => {
+        let row=getTarget();
+        if (!row) {
+            row=await new Promise(resolve => {
                 const timer=setTimeout(() => {observer.disconnect();resolve(null);},3500);
                 const observer=new MutationObserver(() => {
                     const found=getTarget();
@@ -167,8 +166,16 @@
                 observer.observe(document.body,{childList:true,subtree:true});
             });
         }
+        if (!row) return;
+        const target=actionClass && row.querySelector('.'+actionClass);
         if (target) target.click();
-        // If not available, leave the native manager open as a safe fallback.
+        else {
+            // If this extension has no native settings/action, put TalkBack
+            // on its original management row rather than an empty screen.
+            row.tabIndex=-1;
+            row.focus({preventScroll:true});
+            row.scrollIntoView({block:'nearest',behavior:'auto'});
+        }
     }
     async function updateAll(selector) {
         nativeManager.click();
@@ -188,7 +195,10 @@
                 name,display_name:displayName(name,manifest),
                 type:module.extensionTypes[name] || '',
                 version:clean(manifest.version),
-                repository:clean(manifest.homepage || manifest.repository || ''),
+                repository:clean(
+                    typeof manifest.homepage==='string' ? manifest.homepage :
+                    typeof manifest.repository==='string' ? manifest.repository : ''
+                ),
             };
         });
         const payload={format:'sillytavern-extension-inventory-v1',extensions:data};
@@ -211,8 +221,9 @@
                 updateAll('.extensions_info .extensions_toolbar button:first-child')},
             {label:'Cập nhật các tiện ích đang bật',run:() =>
                 updateAll('.extensions_info .extensions_toolbar button:nth-child(2)')},
-            {label:'Thông báo cập nhật',run:() =>
-                byId('extensions_notify_updates')?.click()},
+            {label:byId('extensions_notify_updates')?.checked
+                ? 'Tắt thông báo cập nhật' : 'Bật thông báo cập nhật',
+                run:() => byId('extensions_notify_updates')?.click()},
             {label:'Cài đặt kết nối',run:() => mode('extras')},
             {label:'Hiển thị mọi cấu hình gốc',run:() => mode('all')},
         ],optionsButton);
@@ -224,19 +235,23 @@
     }
     function showEntryMenu(name,manifest,focusTarget) {
         const external=name.startsWith('third-party');
-        const disabled=window.__stExtensionStudioApi?.extension_settings?.disabledExtensions?.includes(name);
+        const disabled=extensionApi?.extension_settings?.disabledExtensions?.includes(name);
         const items=[
             {label:'Mở tiện ích',run:() => void enterExtension(name,manifest)},
             {label:disabled?'Bật tiện ích':'Tắt tiện ích',
                 run:() => void toggleExtension(name,disabled)},
         ];
-        if (external) items.push(
-            {label:'Cập nhật',run:()=>void nativeManage(name,'btn_update')},
-            {label:'Dọn dữ liệu',run:()=>void nativeManage(name,'btn_clean')},
-            {label:'Chuyển vị trí',run:()=>void nativeManage(name,'btn_move')},
-            {label:'Chuyển nhánh',run:()=>void nativeManage(name,'btn_branch')},
-            {label:'Xóa tiện ích',run:()=>void nativeManage(name,'btn_delete')},
-        );
+        if (external) {
+            items.push({label:'Cập nhật',run:()=>void nativeManage(name,'btn_update')});
+            if (manifest?.hooks?.clean) {
+                items.push({label:'Dọn dữ liệu',run:()=>void nativeManage(name,'btn_clean')});
+            }
+            items.push(
+                {label:'Chuyển vị trí',run:()=>void nativeManage(name,'btn_move')},
+                {label:'Chuyển nhánh',run:()=>void nativeManage(name,'btn_branch')},
+                {label:'Xóa tiện ích',run:()=>void nativeManage(name,'btn_delete')}
+            );
+        }
         items.push({label:'Quản lý nâng cao',run:()=>void nativeManage(name)});
         popup(displayName(name,manifest),items,focusTarget);
     }
@@ -252,7 +267,7 @@
     }
 
     function render() {
-        const module=window.__stExtensionStudioApi;
+        const module=extensionApi;
         if (!module?.extensionNames?.length) return;
         const names=module.extensionNames.slice();
         const states=module.extension_settings.disabledExtensions || [];
@@ -322,14 +337,14 @@
     // Native extension module is the only source for installed names,
     // manifests, permissions, enable/disable and persistence.
     api().then(module => {
-        window.__stExtensionStudioApi=module;
+        extensionApi=module;
         render();
     }).catch(error => {
         console.error('[Extension Studio] Native extensions unavailable',error);
     });
     let lastCount=0;
     const refresh=() => {
-        const module=window.__stExtensionStudioApi;
+        const module=extensionApi;
         if (module) {
             if (module.extensionNames.length!==lastCount) {
                 lastCount=module.extensionNames.length;
@@ -343,6 +358,6 @@
     // The drawer can open after the upstream settings/extension loader.
     const refreshTimer=setInterval(()=>{
         refresh();
-        if (window.__stExtensionStudioApi?.extensionNames?.length) clearInterval(refreshTimer);
+        if (extensionApi?.extensionNames?.length) clearInterval(refreshTimer);
     },750);
 })();
