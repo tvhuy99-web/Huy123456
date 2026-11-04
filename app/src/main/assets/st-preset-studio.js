@@ -64,7 +64,9 @@ const get = id => document.getElementById(id);
         const dialog = document.createElement('dialog');
         dialog.className = 'st-ps-popup';
         dialog.setAttribute('aria-label', title);
-        dialog.append(make('h3', title));
+        const heading = make('h3',title);
+        heading.setAttribute('aria-hidden','true');
+        dialog.append(heading);
         for (const item of actions) {
             const btn = action(item.label, () => {
                 dialog.close();
@@ -267,9 +269,10 @@ const get = id => document.getElementById(id);
             toggle.dataset.presetPromptId = id;
             toggle.setAttribute('role','switch');
             toggle.setAttribute('aria-checked',String(!!row.enabled));
-            toggle.setAttribute('aria-label','Bật lời nhắc ' + (p.name || 'Không tên'));
+            toggle.setAttribute('aria-label','Lời nhắc ' + (p.name || 'Không tên'));
             toggle.disabled = !pm.isPromptToggleAllowed(p);
             const h = make('h3','');
+            h.setAttribute('role','presentation');
             const title = action(p.name || 'Lời nhắc', () => {
                 if (suppress) { suppress = false; return; }
                 if (!moving) edit(id);
@@ -348,7 +351,9 @@ const get = id => document.getElementById(id);
             const box = document.createElement('dialog');
             box.className = 'st-ps-popup st-ps-preview-dialog';
             box.setAttribute('aria-label','Xem trước lời nhắc gửi tới AI');
-            box.append(make('h3','Xem trước lời nhắc gửi tới AI'));
+            const heading = make('h3','Xem trước lời nhắc gửi tới AI');
+            heading.setAttribute('aria-hidden','true');
+            box.append(heading);
             box.append(make('pre',rendered || 'Không có dữ liệu xem trước.'));
             box.append(action('Đóng',() => box.close()));
             box.addEventListener('close',() => {box.remove();control.focus();});

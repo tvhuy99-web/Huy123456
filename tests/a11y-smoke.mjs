@@ -57,6 +57,7 @@ const send = new FakeElement('div',{id:'send_but',classes:['interactable','fa-so
 const options = new FakeElement('div',{id:'options_button',classes:['interactable','fa-solid','fa-bars']});
 const composer = new FakeElement('textarea',{id:'send_textarea'});
 const filter = new FakeElement('input',{id:'unlabeled_filter'});
+filter.setAttribute('placeholder','Tìm kiếm');
 const native = new FakeElement('button',{text:'Lưu cài đặt'});
 const icon = new FakeElement('i',{classes:['fa-solid','fa-save']});
 native.append(icon);
@@ -64,18 +65,20 @@ const copyMessage = new FakeElement('div',{classes:['mes_button','mes_copy','fa-
 const previousSwipe = new FakeElement('div',{classes:['swipe_left','fa-solid','fa-chevron-left']});
 const chatEntry = new FakeElement('div',{classes:['select_chat_block']});
 chatEntry.append(new FakeElement('span',{classes:['select_chat_block_filename'],text:'Cuộc trò chuyện A'}));
+const groupEntry = new FakeElement('div',{classes:['group_select']});
+groupEntry.append(new FakeElement('span',{classes:['ch_name'],text:'Nhóm A'}));
 const decorative = new FakeElement('img',{alt:''});
 const meaningful = new FakeElement('img',{alt:'Hình nhân vật'});
 const imageControl = new FakeElement('div',{id:'customImageButton',classes:['menu_button']});
 imageControl.append(new FakeElement('img',{alt:'Mở bộ sưu tập'}));
-const elements=[send,options,composer,filter,native,copyMessage,previousSwipe,chatEntry,decorative,meaningful,imageControl];
+const elements=[send,options,composer,filter,native,copyMessage,previousSwipe,chatEntry,groupEntry,decorative,meaningful,imageControl];
 const listeners={};
 const document = {
   body:{},
   documentElement:{},
   getElementById: id => elements.find(el=>el.id===id) || null,
   querySelectorAll: selector => {
-    if(selector.startsWith('button,')) return [send,options,composer,filter,native,copyMessage,previousSwipe,chatEntry,imageControl];
+    if(selector.startsWith('button,')) return [send,options,composer,filter,native,copyMessage,previousSwipe,chatEntry,groupEntry,imageControl];
     if(selector.startsWith('img,i.fa')) return [decorative,meaningful,icon,...imageControl.children];
     return [];
   },
@@ -99,11 +102,18 @@ assert.equal(composer.getAttribute('aria-label'),'Nhập tin nhắn');
 assert.equal(composer.getAttribute('role'),null,'textarea must retain native semantics');
 assert.equal(composer.getAttribute('tabindex'),null,'textarea must not get artificial tab ordering');
 assert.equal(filter.getAttribute('role'),null,'text input must not become a button');
+assert.equal(filter.getAttribute('aria-label'),null,
+  'placeholder already names search; do not duplicate it as aria-label');
 assert.equal(copyMessage.getAttribute('aria-label'),'Sao chép tin nhắn');
 assert.equal(copyMessage.getAttribute('role'),'button');
 assert.equal(previousSwipe.getAttribute('aria-label'),'Xem phản hồi trước');
 assert.equal(chatEntry.getAttribute('aria-label'),'Mở cuộc trò chuyện: Cuộc trò chuyện A');
-assert.equal(native.getAttribute('aria-label'),'Lưu cài đặt');
+assert.equal(chatEntry.children[0].getAttribute('aria-hidden'),'true',
+  'history filename must not repeat the row action');
+assert.equal(groupEntry.getAttribute('aria-label'),'Mở nhóm chat Nhóm A');
+groupEntry.dataset={stCsReady:'1'};
+assert.equal(native.getAttribute('aria-label'),null,
+  'visible text on a native button supplies its name without a duplicate aria-label');
 assert.equal(native.getAttribute('role'),null,'native semantic role must be preserved');
 assert.equal(icon.getAttribute('aria-hidden'),'true','nested visual icon must be hidden');
 assert.equal(decorative.getAttribute('aria-hidden'),'true','decorative image not read aloud');
@@ -117,12 +127,20 @@ chatEntry.children[0].textContent = 'Cuộc trò chuyện B';
 observer.cb();
 assert.equal(chatEntry.getAttribute('aria-label'),'Mở cuộc trò chuyện: Cuộc trò chuyện B',
   'dynamic chat labels must refresh');
+chatEntry.setAttribute('aria-label','Tên tùy chỉnh từ extension');
+observer.cb();
+assert.equal(chatEntry.getAttribute('aria-label'),'Tên tùy chỉnh từ extension',
+  'later explicit labels must not be overridden');
 assert.ok(typeof listeners.keydown==='function','keyboard activation should work');
 
 const evt={key:'Enter',target:send,preventDefault(){this.prevented=true;}};
 listeners.keydown(evt);
 assert.equal(send.clicked,true);
 assert.equal(evt.prevented,true);
+const groupEvent={key:'Enter',target:groupEntry,preventDefault(){this.prevented=true;}};
+listeners.keydown(groupEvent);
+assert.equal(groupEntry.clicked,undefined,
+  'Character Studio owns group keyboard activation when installed');
 
 runInNewContext(source,context);
 assert.equal(window.__stAndroidAccessibilityInstalled,true,'must remain installed once');

@@ -76,9 +76,11 @@
                 const value = await api.stAndroidGetPresetExtensions();
                 const dialog = el('dialog', undefined, 'st-ps-popup st-ps-json-dialog');
                 dialog.setAttribute('aria-label', 'Extensions JSON');
-                dialog.append(el('h3', 'Extensions JSON'));
+                const heading = el('h3', 'Extensions JSON');
+                heading.setAttribute('aria-hidden','true');
+                dialog.append(heading);
                 const input = el('textarea');
-                input.setAttribute('aria-label', 'Extensions JSON');
+                input.setAttribute('aria-label', 'Nội dung JSON');
                 input.spellcheck = false;
                 input.rows = 12;
                 input.value = JSON.stringify(value, null, 2);
@@ -165,7 +167,9 @@
             const messages = collectMessages(pm.messages);
             const dialog = el('dialog', undefined, 'st-ps-popup st-ps-preview-dialog');
             dialog.setAttribute('aria-label', 'Xem trước lời nhắc gửi tới AI');
-            dialog.append(el('h3', 'Xem trước lời nhắc gửi tới AI'));
+            const heading = el('h3', 'Xem trước lời nhắc gửi tới AI');
+            heading.setAttribute('aria-hidden','true');
+            dialog.append(heading);
             const content = el('div', undefined, 'st-ps-assembled-preview');
             if (pm.error) {
                 const warning = el('p', String(pm.error), 'st-ps-error');
@@ -235,7 +239,10 @@
             const title = node.getAttribute('title');
             if (title && Object.hasOwn(translations, title)) {
                 node.setAttribute('title', translations[title]);
-                if (!node.getAttribute('aria-label')) node.setAttribute('aria-label', translations[title]);
+                if (node.matches('button,a,input,select,textarea,.menu_button,.right_menu_button,[role="button"]') &&
+                    !node.getAttribute('aria-label')) {
+                    node.setAttribute('aria-label', translations[title]);
+                }
             }
         }
     }

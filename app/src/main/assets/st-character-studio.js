@@ -44,11 +44,12 @@
         const heading = make('h2', 'Nhân vật');
         const more = button('Tùy chọn khác', openMore);
         more.id = 'st-cs-more';
-        const sortLabel = make('label', 'Thứ tự sắp xếp nhân vật');
-        sortLabel.htmlFor = 'character_sort_order';
-        sortLabel.className = 'st-cs-label';
+        // The native select already exposes the selected sort order.
+        sort.removeAttribute('title');
+        sort.removeAttribute('data-i18n');
+        sort.setAttribute('aria-label','Sắp xếp nhân vật');
         search.placeholder = 'Tìm kiếm nhân vật';
-        search.setAttribute('aria-label', 'Tìm kiếm nhân vật');
+        search.removeAttribute('aria-label');
         searchBlock.classList.add('st-cs-search');
         for (const option of Array.from(sort.options)) {
             const labels = {
@@ -70,26 +71,24 @@
                 option.removeAttribute('data-i18n');
             }
         }
-        toolbar.append(heading, more, sortLabel, sort, searchBlock);
+        toolbar.append(heading, more, sort, searchBlock);
         fixedTop.prepend(toolbar);
         listPanel.classList.add('st-cs-enabled');
 
-        // Native list items stay the native live nodes. Only add accessible
-        // roles to their existing name spans and support long-press actions.
+        // One named accessibility action per character. Preserve the live
+        // children for native handlers and the interactive tag filter.
         function prepareNativeCards() {
             for (const card of nativeList.querySelectorAll('.character_select[data-chid]')) {
+                const label = card.querySelector('.ch_name')?.textContent?.trim() || 'Nhân vật';
+                card.setAttribute('role','button');
+                card.tabIndex = 0;
+                card.setAttribute('aria-label','Mở trò chuyện với ' + label);
+                card.querySelector('.character_name_block')?.setAttribute('aria-hidden','true');
+                card.querySelector('.avatar')?.setAttribute('aria-hidden','true');
                 if (card.dataset.stCsReady) continue;
                 card.dataset.stCsReady = '1';
-                card.setAttribute('role', 'button');
-                card.tabIndex = 0;
-                const name = card.querySelector('.ch_name');
-                const label = name?.textContent?.trim() || 'Nhân vật';
-                card.setAttribute('aria-label', 'Mở trò chuyện với ' + label);
-                if (name) {
-                    name.setAttribute('role', 'heading');
-                    name.setAttribute('aria-level', '3');
-                }
                 card.addEventListener('keydown', event => {
+                    if (event.target !== card || event.defaultPrevented) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         card.click();
@@ -104,6 +103,66 @@
             cardRefresh = setTimeout(prepareNativeCards, 60);
         }).observe(nativeList, { childList:true, subtree:true });
 
+        // Keep SillyTavern's pagination logic, but only expose it when
+        // there is more than one page. The native size selector persists
+        // the user's chosen page size through AccountStorage.
+        const pagination = byId('rm_print_characters_pagination');
+        let pageSizeInitialized = false;
+        function updateCharacterPagination() {
+            if (!pagination) return;
+            const sizeSelect = pagination.querySelector('.J-paginationjs-size-select');
+            if (sizeSelect && !pageSizeInitialized) {
+                pageSizeInitialized = true;
+                try {
+                    const key = 'st_cs_page_size_100';
+                    if (!localStorage.getItem(key) && sizeSelect.value === '50' &&
+                        Array.from(sizeSelect.options).some(option => option.value === '100')) {
+                        localStorage.setItem(key,'1');
+                        sizeSelect.value = '100';
+                        sizeSelect.dispatchEvent(new Event('change',{bubbles:true}));
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('[Character Studio] Page size preference unavailable',error);
+                }
+            }
+            const previous = pagination.querySelector('.paginationjs-pages .paginationjs-prev');
+            const next = pagination.querySelector('.paginationjs-pages .paginationjs-next');
+            const onePage = Boolean(previous && next &&
+                previous.classList.contains('disabled') &&
+                next.classList.contains('disabled'));
+            pagination.classList.toggle('st-cs-single-page',onePage);
+            const controlLabels = {
+                'paginationjs-first':'Trang đầu',
+                'paginationjs-prev':'Trang trước',
+                'paginationjs-next':'Trang sau',
+                'paginationjs-last':'Trang cuối',
+            };
+            for (const [className,label] of Object.entries(controlLabels)) {
+                for (const item of pagination.querySelectorAll('.paginationjs-pages .' + className)) {
+                    const link = item.querySelector('a, button');
+                    if (!link) continue;
+                    if (item.classList.contains('disabled')) {
+                        link.setAttribute('aria-hidden','true');
+                        link.tabIndex = -1;
+                    } else {
+                        link.removeAttribute('aria-hidden');
+                        link.removeAttribute('tabindex');
+                        link.removeAttribute('title');
+                        link.setAttribute('aria-label',label);
+                    }
+                }
+            }
+        }
+        if (pagination) {
+            updateCharacterPagination();
+            let paginationRefresh;
+            new MutationObserver(() => {
+                clearTimeout(paginationRefresh);
+                paginationRefresh = setTimeout(updateCharacterPagination,50);
+            }).observe(pagination,{childList:true,subtree:true});
+        }
+
         // Keep original bulk edit, tag filters and extension-added toolbar
         // slots mounted. These actions are reachable in the compact menu.
         function nativeClick(id) {
@@ -117,7 +176,9 @@
         function popup(title, choices, focus) {
             const dialog = make('dialog', undefined, 'st-cs-dialog');
             dialog.setAttribute('aria-label', title);
-            dialog.append(make('h3', title));
+            const visibleTitle = make('h3',title);
+            visibleTitle.setAttribute('aria-hidden','true');
+            dialog.append(visibleTitle);
             for (const item of choices) {
                 dialog.append(button(item.label, () => {
                     dialog.close();
@@ -183,6 +244,81 @@
         drawerTabs.append(drawerName,drawerRow);
         originalPanel.insertBefore(drawerTabs,byId('rm_PinAndTabs'));
 
+        const editorMenu = make('div',undefined,'st-cs-editor-menu');
+        editorMenu.id = 'st-cs-editor-menu';
+        editorMenu.hidden = true;
+        const editorOptions = button('Tùy chọn khác', () => {
+            const id = currentCharacterId();
+            if (id === null) return;
+            popup(selectedCharacterName(), characterMenuItems(id), editorOptions);
+        });
+        editorOptions.id = 'st-cs-editor-options';
+        editorMenu.append(editorOptions);
+        drawerTabs.after(editorMenu);
+
+        // Moving the original live form controls preserves field values,
+        // native listeners and extension hooks. Restore their exact DOM
+        // positions outside the compact character editor.
+        const compactIds = [
+            'spoiler_free_desc', 'descriptionWrapper', 'tags_div',
+            'scenario_div', 'depth_prompt_div', 'character_popup'
+        ];
+        const nativePositions = new Map();
+        for (const id of compactIds) {
+            const node = byId(id);
+            if (!node?.parentNode) continue;
+            const marker = document.createComment('native position: ' + id);
+            node.parentNode.insertBefore(marker,node);
+            nativePositions.set(id,{node,marker});
+        }
+        const extraButton = button('Hiển thị thêm', () => {
+            const expanded = extraFields.hidden;
+            extraFields.hidden = !expanded;
+            extraButton.textContent = expanded ? 'Thu gọn' : 'Hiển thị thêm';
+            extraButton.setAttribute('aria-expanded',String(expanded));
+            document.body.classList.toggle('st-cs-more-open', expanded);
+        },'st-cs-extra-toggle');
+        extraButton.id = 'st-cs-extra-toggle';
+        extraButton.hidden = true;
+        extraButton.setAttribute('aria-controls','st-cs-extra-fields');
+        extraButton.setAttribute('aria-expanded','false');
+        const extraFields = make('div',undefined,'st-cs-extra-fields');
+        extraFields.id = 'st-cs-extra-fields';
+        extraFields.hidden = true;
+        const hiddenFormFields = byId('hidden-divs');
+        if (hiddenFormFields) {
+            createForm.insertBefore(extraButton, hiddenFormFields);
+            createForm.insertBefore(extraFields, hiddenFormFields);
+        }
+        let compactActive = false;
+        function setCompactEditor(active) {
+            if (active === compactActive) return compactActive;
+            if (active) {
+                if (!hiddenFormFields || nativePositions.size !== compactIds.length) return false;
+                for (const id of ['scenario_div','depth_prompt_div']) {
+                    createForm.insertBefore(nativePositions.get(id).node,extraButton);
+                }
+                for (const id of ['spoiler_free_desc','descriptionWrapper','tags_div',
+                    'character_popup']) {
+                    extraFields.append(nativePositions.get(id).node);
+                }
+                extraButton.hidden = false;
+                extraFields.hidden = true;
+                extraButton.textContent = 'Hiển thị thêm';
+                extraButton.setAttribute('aria-expanded','false');
+            } else {
+                for (const id of compactIds) {
+                    const item = nativePositions.get(id);
+                    if (item?.marker.parentNode) item.marker.after(item.node);
+                }
+                extraButton.hidden = true;
+                extraFields.hidden = true;
+                extraButton.setAttribute('aria-expanded','false');
+                document.body.classList.remove('st-cs-more-open');
+            }
+            compactActive = active;
+            return compactActive;
+        }
 
         let scriptApi = null;
         let groupApi = null;
@@ -201,7 +337,10 @@
                 card.setAttribute('role','button');
                 card.setAttribute('aria-label','Mở nhóm chat ' +
                     (card.querySelector('.ch_name')?.textContent?.trim() || ''));
+                card.querySelector('.ch_name')?.setAttribute('aria-hidden','true');
+                card.querySelector('.avatar')?.setAttribute('aria-hidden','true');
                 card.addEventListener('keydown',event=>{
+                    if (event.target !== card || event.defaultPrevented) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();card.click();
                     }
@@ -221,6 +360,12 @@
         function openDrawer() {
             if (isDrawerClosed()) byId('rightNavDrawerIcon')?.click();
         }
+        function currentCharacterId() {
+            const id = Number(scriptApi?.this_chid);
+            return scriptApi?.this_chid !== undefined &&
+                scriptApi?.this_chid !== null &&
+                Number.isInteger(id) && scriptApi?.characters?.[id] ? id : null;
+        }
         function selectedCharacterName() {
             if (!scriptApi) return '';
             const ch = scriptApi.this_chid;
@@ -239,6 +384,7 @@
             drawerName.textContent = name;
             tabs.hidden = !name;
             drawerTabs.hidden = !name;
+            editorMenu.hidden = currentCharacterId() === null;
             if (name) {
                 chatButton.setAttribute('aria-label','Trò chuyện với ' + name);
                 editButton.setAttribute('aria-label','Chỉnh sửa ' + name);
@@ -247,12 +393,21 @@
         function setView(view, {fromCard = false} = {}) {
             selectedView = view;
             syncSelected();
+            const compact = setCompactEditor(
+                view === 'edit' && currentCharacterId() !== null
+            );
+            document.body.classList.toggle('st-cs-editing',compact);
+            // Keep the covered chat and duplicate tab strip out of TalkBack.
+            chatShell.inert = compact;
             for (const [node,which] of [[chatButton,'chat'],[editButton,'edit'],
                 [drawerChat,'chat'],[drawerEdit,'edit']]) {
                 node.setAttribute('aria-selected', String(view === which));
                 node.tabIndex = view === which ? 0 : -1;
             }
-            if (!activeName.textContent) return;
+            if (!activeName.textContent) {
+                closeDrawer();
+                return;
+            }
             if (view === 'chat') {
                 closeDrawer();
                 if (!fromCard) chat.focus?.({preventScroll:true});
@@ -262,34 +417,61 @@
             }
         }
 
-        async function selectedNativeAction(card, operation) {
-            if (!scriptApi || nativeActionsPending) return;
-            const id = Number(card.dataset.chid);
-            if (!Number.isInteger(id) || !scriptApi.characters?.[id]) return;
+        const nativeCharacterActions = [
+            { label:'Xuất thẻ nhân vật', id:'export_button' },
+            { label:'Nhân bản nhân vật', id:'dupe_button' },
+            { label:'Đổi tên', option:'renameCharButton' },
+            { label:'Lorebook nhân vật', id:'world_button' },
+            { label:'Lorebook trò chuyện', selector:'#avatar_controls .chat_lorebook_button' },
+            { label:'Liên kết Lorebook', option:'set_character_world' },
+            { label:'Nhập Lorebook từ thẻ', option:'import_character_info' },
+            { label:'Lịch sử trò chuyện', id:'option_select_chat' },
+            { label:'Yêu thích', id:'favorite_button' },
+            { label:'Persona liên kết', id:'char_connections_button' },
+            { label:'Thiết lập riêng', option:'set_chat_character_settings' },
+            { label:'Chuyển thành Persona', option:'convert_to_persona' },
+            { label:'Liên kết nguồn', option:'character_source' },
+            { label:'Thay thế / Cập nhật', option:'replace_update' },
+            { label:'Nhập thẻ tag', option:'import_tags' },
+            { label:'Đặt làm trợ lý', option:'set_as_assistant' },
+            { label:'Xóa nhân vật', id:'delete_button' },
+        ];
+        function nativeCharacterOption(optionId) {
+            const option = Array.from(byId('char-management-dropdown')?.options || [])
+                .find(item => item.id === optionId);
+            if (!option) return false;
+            const dropdown = option.parentElement;
+            dropdown.value = option.value;
+            dropdown.dispatchEvent(new Event('change',{bubbles:true}));
+            return true;
+        }
+        function characterMenuItems(id) {
+            return nativeCharacterActions
+                .filter(item => (item.id && byId(item.id)) ||
+                    (item.selector && document.querySelector(item.selector)) ||
+                    (item.option && Array.from(byId('char-management-dropdown')?.options || [])
+                        .some(option => option.id === item.option)))
+                .map(item => ({
+                    label:item.label,
+                    run:()=>selectedNativeAction(id,item),
+                }));
+        }
+        async function selectedNativeAction(id, action) {
+            if (!scriptApi || nativeActionsPending || !Number.isInteger(id) ||
+                !scriptApi.characters?.[id]) return;
             nativeActionsPending = true;
             try {
-                await scriptApi.selectCharacterById(id);
-                if (String(scriptApi.this_chid) !== String(id)) return;
-                if (operation === 'rename') {
-                    setView('edit');
-                    const nameInput = byId('character_name_pole');
-                    nameInput?.focus();
-                    nameInput?.select();
-                    return;
+                if (currentCharacterId() !== id) {
+                    await scriptApi.selectCharacterById(id);
                 }
-                // Export / duplicate / delete are dispatched to the exact
-                // native handlers, retaining native confirmation and format.
-                const actions = {
-                    export:'export_button',
-                    duplicate:'dupe_button',
-                    delete:'delete_button',
-                };
-                const target = actions[operation];
-                if (target) {
-                    openDrawer();
-                    byId('rm_button_selected_ch')?.click();
-                    nativeClick(target);
-                }
+                if (currentCharacterId() !== id) return;
+                // Use the original native handlers and their confirmations.
+                // Opening edit only prepares the native form for off-screen cards.
+                if (selectedView !== 'edit') setView('edit');
+                else openDrawer();
+                if (action.id) nativeClick(action.id);
+                else if (action.selector) document.querySelector(action.selector)?.click();
+                else if (action.option) nativeCharacterOption(action.option);
             } catch (error) {
                 console.error('[Character Studio] Native action failed',error);
                 window.alert('Không thể thực hiện thao tác với nhân vật.');
@@ -298,13 +480,10 @@
             }
         }
         function openCardActions(card) {
+            const id = Number(card.dataset.chid);
+            if (!Number.isInteger(id) || !scriptApi?.characters?.[id]) return;
             const name = card.querySelector('.ch_name')?.textContent?.trim() || 'Nhân vật';
-            popup(name, [
-                {label:'Xuất thẻ nhân vật',run:()=>selectedNativeAction(card,'export')},
-                {label:'Nhân bản nhân vật',run:()=>selectedNativeAction(card,'duplicate')},
-                {label:'Xóa nhân vật',run:()=>selectedNativeAction(card,'delete')},
-                {label:'Đổi tên',run:()=>selectedNativeAction(card,'rename')},
-            ],card);
+            popup(name, characterMenuItems(id),card);
         }
 
         // Capture prevents a long press from also triggering the delegated
@@ -362,7 +541,12 @@
                 if (!nativeActionsPending) setView('chat',{fromCard:true});
             });
             api.eventSource.on(api.event_types.CHARACTER_DELETED,()=>{
-                setTimeout(syncSelected,0);
+                setTimeout(() => {
+                    syncSelected();
+                    if (selectedView === 'edit' && currentCharacterId() === null) {
+                        setView('chat',{fromCard:true});
+                    }
+                },0);
             });
             api.eventSource.on(api.event_types.APP_READY,()=>syncSelected());
             setTimeout(syncSelected,500);
