@@ -47,7 +47,39 @@
         // The native select already exposes the selected sort order.
         sort.removeAttribute('title');
         sort.removeAttribute('data-i18n');
-        sort.setAttribute('aria-label','Sắp xếp nhân vật');
+        // Android TalkBack creates TWO swipe targets for a native select:
+        // its selected option (read-only) and the actual chooser. Keep the
+        // original select, value, handlers and options, but expose one button
+        // that opens a compact native-option picker.
+        sort.hidden = true;
+        sort.setAttribute('aria-hidden','true');
+        sort.tabIndex = -1;
+        const sortButton = button('',openSortMenu);
+        sortButton.id='st-cs-sort';
+        sortButton.setAttribute('aria-haspopup','dialog');
+        const selectedSortName = () =>
+            sort.selectedOptions[0]?.textContent?.trim() || 'Chưa chọn';
+        const syncSortName = () =>
+            sortButton.textContent = 'Sắp xếp: ' + selectedSortName();
+        function openSortMenu() {
+            popup('Sắp xếp nhân vật',Array.from(sort.options)
+                .map((option,index)=>({option,index}))
+                .filter(({option})=>!option.hidden && !option.disabled)
+                .map(({option,index})=>({
+                    label:option.textContent.trim(),
+                    run:()=>{
+                        sort.selectedIndex=index;
+                        sort.dispatchEvent(new Event('change',{bubbles:true}));
+                        syncSortName();
+                    }
+                })),sortButton);
+        }
+        sort.addEventListener('change',syncSortName);
+        sort.addEventListener('input',syncSortName);
+        new MutationObserver(syncSortName).observe(sort,{
+            childList:true,subtree:true,attributes:true,
+            attributeFilter:['selected','hidden','label']
+        });
         search.placeholder = 'Tìm kiếm nhân vật';
         search.removeAttribute('aria-label');
         searchBlock.classList.add('st-cs-search');
@@ -71,7 +103,9 @@
                 option.removeAttribute('data-i18n');
             }
         }
-        toolbar.append(heading, more, sort, searchBlock);
+        toolbar.append(heading, more, sort, sortButton, searchBlock);
+        syncSortName();
+        search.addEventListener('input',()=>queueMicrotask(syncSortName));
         fixedTop.prepend(toolbar);
         listPanel.classList.add('st-cs-enabled');
 
