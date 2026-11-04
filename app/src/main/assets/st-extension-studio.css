@@ -71,7 +71,8 @@
     display:block!important;flex:1 1 100%!important;
     max-width:100%!important;width:100%!important;
 }
-#rm_extensions_block.st-ex-detail .extension_container:not(.st-ex-selected) {
+#rm_extensions_block.st-ex-detail #extensions_settings > .extension_container:not(.st-ex-selected),
+#rm_extensions_block.st-ex-detail #extensions_settings2 > .extension_container:not(.st-ex-selected) {
     display:none!important;
 }
 /* Preserve the original, deprecated Extras API settings under an explicit
