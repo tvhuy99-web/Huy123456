@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - upgrade/sillytavern-1.19.0
+      - feat/character-editor-compact-menu
 
 permissions:
   contents: read
@@ -46,6 +47,10 @@ jobs:
         run: |
           node --check app/src/main/assets/st-accessibility.js
           node --check app/src/main/assets/st-preset-studio.js
+          node --check app/src/main/assets/st-preset-features.js
+          node --check app/src/main/assets/st-character-studio.js
+          node --check app/src/main/assets/st-lorebook-studio.js
+          node --check app/src/main/assets/st-extension-studio.js
           node --check app/src/main/assets/st-debug-panel.js
           node tests/a11y-smoke.mjs
           node tests/preset-studio-smoke.mjs
@@ -73,6 +78,8 @@ jobs:
           python tests/preset-studio-browser.py
           python tests/preset-features-browser.py
           python tests/character-studio-browser.py
+          python tests/lorebook-studio-browser.py
+          python tests/extension-studio-browser.py
           python tests/debug-panel-browser.py
           python tests/debug-console-bounds-browser.py
           python tests/debug-console-compact-browser.py
