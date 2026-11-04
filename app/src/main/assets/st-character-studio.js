@@ -88,7 +88,7 @@
                 if (card.dataset.stCsReady) continue;
                 card.dataset.stCsReady = '1';
                 card.addEventListener('keydown', event => {
-                    if (event.target !== card) return;
+                    if (event.target !== card || event.defaultPrevented) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         card.click();
@@ -340,7 +340,7 @@
                 card.querySelector('.ch_name')?.setAttribute('aria-hidden','true');
                 card.querySelector('.avatar')?.setAttribute('aria-hidden','true');
                 card.addEventListener('keydown',event=>{
-                    if (event.target !== card) return;
+                    if (event.target !== card || event.defaultPrevented) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();card.click();
                     }
