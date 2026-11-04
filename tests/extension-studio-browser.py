@@ -4,6 +4,7 @@
 Do not run during feature development; execute at the agreed final QA stage.
 """
 from pathlib import Path
+import shutil
 from playwright.sync_api import sync_playwright
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -19,7 +20,11 @@ source=source.replace(bridge, "const api = () => Promise.resolve(window.__extens
 
 def main():
     with sync_playwright() as p:
-        browser=p.chromium.launch(headless=True)
+        chrome=next((shutil.which(name) for name in (
+            'google-chrome','google-chrome-stable','chromium','chromium-browser')
+            if shutil.which(name)),None)
+        assert chrome,'No browser available'
+        browser=p.chromium.launch(executable_path=chrome,headless=True,args=['--no-sandbox'])
         page=browser.new_page()
         errors=[]
         page.on('pageerror',lambda err: errors.append(str(err)))
