@@ -80,7 +80,7 @@
                 heading.setAttribute('aria-hidden','true');
                 dialog.append(heading);
                 const input = el('textarea');
-                input.setAttribute('aria-label', 'Extensions JSON');
+                input.setAttribute('aria-label', 'Nội dung JSON');
                 input.spellcheck = false;
                 input.rows = 12;
                 input.value = JSON.stringify(value, null, 2);
