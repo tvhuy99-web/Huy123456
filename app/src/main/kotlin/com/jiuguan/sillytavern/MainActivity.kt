@@ -116,6 +116,7 @@ class MainActivity : AppCompatActivity() {
                 injectPresetStudio(view)
                 injectCharacterStudio(view)
                 injectLorebookStudio(view)
+                injectExtensionStudio(view)
             }
 
             override fun onReceivedError(
@@ -376,6 +377,27 @@ class MainActivity : AppCompatActivity() {
             view.evaluateJavascript(styleCode + "\n" + js, null)
         } catch (error: Exception) {
             android.util.Log.e("LorebookStudio", "Unable to load Lorebook Studio", error)
+        }
+    }
+
+    // A compact extension list that delegates to native SillyTavern actions.
+    private fun injectExtensionStudio(view: WebView?) {
+        view ?: return
+        try {
+            val css = assets.open("st-extension-studio.css")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val js = assets.open("st-extension-studio.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val styleCode = "(function() {" +
+                "if (document.getElementById('st-extension-studio-style')) return;" +
+                "var style = document.createElement('style');" +
+                "style.id = 'st-extension-studio-style';" +
+                "style.textContent = " + org.json.JSONObject.quote(css) + ";" +
+                "document.head.appendChild(style);" +
+                "})();"
+            view.evaluateJavascript(styleCode + "\n" + js, null)
+        } catch (error: Exception) {
+            android.util.Log.e("ExtensionStudio", "Unable to load Extension Studio", error)
         }
     }
 
