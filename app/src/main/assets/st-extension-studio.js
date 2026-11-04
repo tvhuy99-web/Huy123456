@@ -51,6 +51,11 @@
     list.id = 'st-ex-list';
     hub.append(toolbar,search,list);
     header.after(hub);
+    const nativeTitle=header.querySelector('h3');
+    if (nativeTitle) {
+        nativeTitle.textContent='Tiện ích mở rộng';
+        nativeTitle.removeAttribute('data-i18n');
+    }
 
     // Extras API is deprecated but the original connection controls must
     // stay available and keep their native listeners.
@@ -291,7 +296,6 @@
                 }
                 void enterExtension(name,manifest);
             },'st-ex-entry-title');
-            title.setAttribute('aria-haspopup','dialog');
             title.setAttribute('aria-label',label+(disabled?', đã tắt':''));
             heading.append(title);
             const metadata=make('span',[
@@ -356,8 +360,11 @@
     const visibilityObserver=new MutationObserver(refresh);
     visibilityObserver.observe(panel,{attributes:true,attributeFilter:['class']});
     // The drawer can open after the upstream settings/extension loader.
+    let refreshAttempts=0;
     const refreshTimer=setInterval(()=>{
         refresh();
-        if (extensionApi?.extensionNames?.length) clearInterval(refreshTimer);
+        if (extensionApi?.extensionNames?.length || ++refreshAttempts>=80) {
+            clearInterval(refreshTimer);
+        }
     },750);
 })();
