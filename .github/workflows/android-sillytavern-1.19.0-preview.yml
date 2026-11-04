@@ -16,7 +16,7 @@ permissions:
 # a cancelled asset packaging job can take minutes to shut down.
 jobs:
   android-preview:
-    name: Test and build SillyTavern preview.12 APK
+    name: Test and build SillyTavern preview.13 APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
