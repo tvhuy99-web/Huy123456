@@ -127,6 +127,11 @@ def main():
         assert page.locator('#st-wi-settings #wiTopBlock').count() == 1
         assert page.locator('#world_info_search').count() == 1
         assert page.locator('#world_editor_select').count() == 1
+        assert page.locator('#world_info_sort_order').is_hidden()
+        assert page.get_by_role('button',name='Sắp xếp: Order').count() == 1
+        page.get_by_role('button',name='Sắp xếp: Order').click()
+        page.get_by_role('dialog').get_by_role('button',name='Order').click()
+        assert page.locator('#world_info_sort_order').input_value() != ''
         assert page.locator('#world_popup_entries_list .world_entry').count() == 1
         assert page.get_by_role('heading', name='Tiêu đề A').count() == 1
         assert page.get_by_role('button',name='Tiêu đề A').count() == 1
