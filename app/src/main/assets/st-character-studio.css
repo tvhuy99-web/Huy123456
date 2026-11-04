@@ -22,9 +22,6 @@
 #rm_characters_block.st-cs-enabled #st-character-toolbar h2 {
     font-size:20px;margin:0;line-height:1.4;color:#f1f5f9;
 }
-#rm_characters_block.st-cs-enabled #st-character-toolbar .st-cs-label {
-    font-size:14px;font-weight:600;color:#cbd5e1;
-}
 #rm_characters_block.st-cs-enabled #st-character-toolbar #character_sort_order,
 #rm_characters_block.st-cs-enabled #st-character-toolbar #character_search_bar,
 #rm_characters_block.st-cs-enabled #st-character-toolbar #st-cs-more {
@@ -211,4 +208,9 @@ body.st-cs-editing #st-cs-extra-fields #character_cross {
 @media (max-width:600px) {
     body.st-cs-editing #form_create #depth_prompt_div {flex-wrap:wrap;}
     body.st-cs-editing #form_create #depth_prompt_div > * {min-width:0;}
+}
+
+/* Keep bulk actions in place; only hide the native pager on a single page. */
+#rm_print_characters_pagination.st-cs-single-page .paginationjs {
+    display:none!important;
 }
