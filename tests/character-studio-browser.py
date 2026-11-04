@@ -25,7 +25,9 @@ assert '#rm_print_characters_block' in theme
 assert 'new URL(' in source
 assert 'nativeClick(target)' in source
 assert 'getElementById' in source
-assert 'characters?.[id]' in source
+assert 'characters?.[id]' in source || 'scriptApi.characters?.[id]' in source
+assert 'nativeCharacterActions' in source
+assert 'setCompactEditor' in source
 source = source.replace('import(moduleUrl).then(api => {',
                         'Promise.resolve(window.__nativeAPI).then(api => {')
 source = source.replace(
@@ -66,7 +68,7 @@ with sync_playwright() as p:
         window.__nativeActions = {};
         const names=['rm_button_create','character_import_button','external_import_button',
             'rm_button_group_chats','bulkEditButton','charListGridToggle',
-            'export_button','dupe_button','delete_button'];
+            'export_button','dupe_button','delete_button','world_button'];
         for (const name of names) {
             document.getElementById(name).addEventListener('click',()=>
                 window.__nativeActions[name] = (window.__nativeActions[name]||0)+1);
@@ -147,12 +149,42 @@ with sync_playwright() as p:
     page.locator('#st-cs-tab-edit').click()
     assert page.locator('#st-cs-tab-edit').get_attribute('aria-selected')=='true'
     assert page.locator('#st-cs-drawer-tabs').count()==1
+    assert page.locator('body.st-cs-editing').count()==1
+    assert page.locator('#st-cs-editor-options').is_visible()
+    assert page.locator('#form_create #firstmessage_textarea').count()==1
+    assert page.locator('#form_create #scenario_div #scenario_pole').count()==1
+    assert page.locator('#form_create #depth_prompt_div #depth_prompt_prompt').count()==1
+    assert page.locator('#st-cs-extra-fields #descriptionWrapper').count()==1
+    assert page.locator('#st-cs-extra-fields #character_popup').count()==1
+    assert page.locator('#st-cs-extra-fields').is_hidden()
+    assert page.locator('#st-cs-extra-toggle').get_attribute('aria-expanded')=='false'
+    page.locator('#st-cs-extra-toggle').click()
+    assert page.locator('#st-cs-extra-fields').is_visible()
+    assert page.locator('#st-cs-extra-fields #character_popup').is_visible()
+    assert page.locator('#st-cs-extra-fields #personality_textarea').count()==1
+    assert page.locator('#st-cs-extra-fields #creator_notes_textarea').count()==1
+    page.locator('#st-cs-extra-toggle').click()
+    assert page.locator('#st-cs-extra-fields').is_hidden()
+    page.locator('#st-cs-editor-options').click()
+    menu=page.get_by_role('dialog')
+    editor_actions=menu.locator('button').all_inner_texts()
+    assert editor_actions[:4]==['Xuất thẻ nhân vật','Nhân bản nhân vật',
+        'Đổi tên','Lorebook nhân vật'],editor_actions
+    assert editor_actions.count('Lorebook nhân vật')==1
+    menu.get_by_text('Lorebook nhân vật').click()
+    page.wait_for_timeout(100)
+    assert page.evaluate('window.__nativeActions.world_button')==1
     page.locator('#st-cs-drawer-tab-chat').click()
     assert page.locator('#st-cs-tab-chat').get_attribute('aria-selected')=='true'
+    assert page.locator('body.st-cs-editing').count()==0
+    assert page.locator('#character_popup #scenario_pole').count()==1
+    assert page.locator('#character_popup #depth_prompt_prompt').count()==1
+    assert page.locator('#form_create #descriptionWrapper').count()==1
+    assert page.locator('#send_form').count()==1
     card.dispatch_event('contextmenu')
     menu=page.get_by_role('dialog')
-    assert menu.locator('button').all_inner_texts()[:4]==[
-        'Xuất thẻ nhân vật','Nhân bản nhân vật','Xóa nhân vật','Đổi tên']
+    long_press_actions=menu.locator('button').all_inner_texts()
+    assert long_press_actions==editor_actions,(long_press_actions,editor_actions)
     menu.get_by_text('Xuất thẻ nhân vật').click()
     page.wait_for_timeout(100)
     assert page.evaluate('window.__nativeActions.export_button')==1
@@ -162,5 +194,5 @@ with sync_playwright() as p:
     assert page.locator('#st-cs-active-name').inner_text()=='Nhóm A'
     assert page.locator('#rm_buttons_container #extension-owned-button').count()==1
     assert not errors,errors
-    print('Character Studio native DOM, menu, sort, chat/edit, group, extension slots: PASS')
+    print('Character Studio compact editor, shared actions, restored native fields, group and extensions: PASS')
     browser.close()
