@@ -466,7 +466,6 @@
         const search = node('input');
         search.type='search';
         search.placeholder='Tìm kiếm nhật ký';
-        search.setAttribute('aria-label','Tìm kiếm nhật ký');
         search.value=state.search;
         search.addEventListener('input',()=>{
             state.search=search.value.toLowerCase().trim();
