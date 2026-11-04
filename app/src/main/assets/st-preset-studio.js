@@ -269,7 +269,7 @@ const get = id => document.getElementById(id);
             toggle.dataset.presetPromptId = id;
             toggle.setAttribute('role','switch');
             toggle.setAttribute('aria-checked',String(!!row.enabled));
-            toggle.setAttribute('aria-label','Bật lời nhắc ' + (p.name || 'Không tên'));
+            toggle.setAttribute('aria-label','Lời nhắc ' + (p.name || 'Không tên'));
             toggle.disabled = !pm.isPromptToggleAllowed(p);
             const h = make('h3','');
             h.setAttribute('role','presentation');
