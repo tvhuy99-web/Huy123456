@@ -1,0 +1,113 @@
+/* Extension Studio: presentation-only layer over SillyTavern 1.19.0. */
+#rm_extensions_block.st-ex-ready .extensions_block > .alignitemscenter.flex-container.wide100p
+  > #extensions_details,
+#rm_extensions_block.st-ex-ready .extensions_block > .alignitemscenter.flex-container.wide100p
+  > #third_party_extension_button,
+#rm_extensions_block.st-ex-ready .extensions_block > .alignitemscenter.flex-container.wide100p
+  > label[for="extensions_notify_updates"] {
+    display:none!important;
+}
+#rm_extensions_block.st-ex-ready #st-extension-studio {
+    flex:0 0 100%;width:100%;min-width:0;
+    box-sizing:border-box;padding:8px 5px 15px;
+}
+#rm_extensions_block.st-ex-ready .st-ex-toolbar {
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+    margin-bottom:10px;
+}
+#rm_extensions_block.st-ex-ready .st-ex-menu-button,
+#rm_extensions_block.st-ex-ready .st-ex-back {
+    border:1px solid var(--SmartThemeBorderColor,#64748b);
+    color:var(--SmartThemeBodyColor,#e2e8f0);
+    background:var(--SmartThemeBlurTintColor,#1e293b);
+    font:inherit;border-radius:10px;padding:10px 13px;min-height:44px;
+    cursor:pointer;
+}
+#rm_extensions_block.st-ex-ready #st-ex-back[hidden],
+#rm_extensions_block.st-ex-ready #st-ex-search[hidden],
+#rm_extensions_block.st-ex-ready #st-ex-list[hidden] {
+    display:none!important;
+}
+#rm_extensions_block.st-ex-ready #st-ex-search {
+    display:block;width:100%;box-sizing:border-box;
+    margin:0 0 10px;min-height:44px;padding:9px 12px;
+    border-radius:9px;
+}
+#rm_extensions_block.st-ex-ready #st-ex-list {
+    display:flex;flex-direction:column;gap:7px;
+    width:100%;min-width:0;
+}
+#rm_extensions_block.st-ex-ready .st-ex-card {
+    display:flex;align-items:center;gap:10px;width:100%;min-width:0;
+    box-sizing:border-box;padding:5px 11px;
+    border:1px solid var(--SmartThemeBorderColor,#475569);
+    border-radius:10px;
+}
+#rm_extensions_block.st-ex-ready .st-ex-card h4 {
+    margin:0;flex:1 1 auto;min-width:0;
+    font-size:inherit;font-weight:600;
+}
+#rm_extensions_block.st-ex-ready .st-ex-entry-title {
+    appearance:none;border:0;background:transparent;
+    color:var(--SmartThemeBodyColor,#e2e8f0);
+    cursor:pointer;width:100%;min-width:0;
+    padding:9px 0;text-align:left;
+    overflow-wrap:anywhere;white-space:normal;
+    min-height:44px;font:inherit;font-weight:600;
+}
+#rm_extensions_block.st-ex-ready .st-ex-meta {
+    font-size:.8em;opacity:.7;flex:0 0 auto;
+}
+/* Keep native controls mounted and their original event handlers alive.
+   One extension configuration is exposed at a time. */
+#rm_extensions_block.st-ex-ready #extensions_settings,
+#rm_extensions_block.st-ex-ready #extensions_settings2 {
+    display:none!important;
+}
+#rm_extensions_block.st-ex-detail #extensions_settings.st-ex-visible-column,
+#rm_extensions_block.st-ex-detail #extensions_settings2.st-ex-visible-column,
+#rm_extensions_block.st-ex-all #extensions_settings,
+#rm_extensions_block.st-ex-all #extensions_settings2 {
+    display:block!important;flex:1 1 100%!important;
+    max-width:100%!important;width:100%!important;
+}
+#rm_extensions_block.st-ex-detail .extension_container:not(.st-ex-selected) {
+    display:none!important;
+}
+/* Preserve the original, deprecated Extras API settings under an explicit
+   entry in the options menu instead of cluttering the TalkBack traversal. */
+#rm_extensions_block.st-ex-ready .st-ex-native-extras,
+#rm_extensions_block.st-ex-ready .extensions_block > hr {
+    display:none!important;
+}
+#rm_extensions_block.st-ex-extras .st-ex-native-extras {
+    display:flex!important;
+}
+#rm_extensions_block.st-ex-ready .st-ex-entry-title:focus-visible,
+#rm_extensions_block.st-ex-ready #st-ex-options:focus-visible,
+#rm_extensions_block.st-ex-ready #st-ex-back:focus-visible {
+    outline:2px solid var(--SmartThemeQuoteColor,#38bdf8);outline-offset:3px;
+}
+.st-ex-popup {
+    position:fixed;inset:0;margin:auto;
+    box-sizing:border-box;width:min(94dvw,540px);max-height:85dvh;
+    overflow:auto;padding:16px;border-radius:12px;
+    background:var(--SmartThemeBlurTintColor,#0f172a);
+    color:var(--SmartThemeBodyColor,#e2e8f0);
+    border:1px solid var(--SmartThemeBorderColor,#475569);
+}
+.st-ex-popup::backdrop {background:rgba(0,0,0,.75);}
+.st-ex-popup > h3 {margin:0 0 10px;}
+.st-ex-popup > button {
+    appearance:none;display:block;box-sizing:border-box;
+    width:100%;min-height:44px;text-align:left;
+    border:1px solid var(--SmartThemeBorderColor,#475569);
+    border-radius:9px;padding:10px 12px;margin:5px 0;
+    color:var(--SmartThemeBodyColor,#e2e8f0);
+    background:var(--SmartThemeBlurTintColor,#1e293b);
+    font:inherit;
+}
+@media(max-width:600px) {
+    #rm_extensions_block.st-ex-ready .st-ex-card {gap:5px;}
+    #rm_extensions_block.st-ex-ready #st-extension-studio {padding:6px 2px 12px;}
+}
