@@ -121,3 +121,94 @@
 #st-cs-drawer-tabs .st-cs-tab-row button:focus-visible {
     outline:2px solid #38bdf8;outline-offset:2px;
 }
+
+/* Compact character editor: keep the native form and advanced controls live. */
+#st-cs-editor-menu[hidden],
+#st-cs-extra-toggle[hidden],
+#st-cs-extra-fields[hidden] { display:none!important; }
+
+body.st-cs-editing #right-nav-panel {
+    position:fixed!important;
+    inset:0!important;
+    top:0!important;left:0!important;right:0!important;bottom:0!important;
+    transform:none!important;margin:0!important;
+    width:100dvw!important;min-width:0!important;max-width:100dvw!important;
+    height:100dvh!important;min-height:0!important;max-height:100dvh!important;
+    display:flex!important;flex-direction:column!important;
+    overflow:hidden!important;z-index:3100!important;border-radius:0!important;
+    background:var(--SmartThemeBlurTintColor,#0f172a);
+}
+body.st-cs-editing #right-nav-panel #st-cs-drawer-tabs {
+    display:block!important;position:relative!important;
+    flex:0 0 auto;margin:0!important;padding:12px!important;
+    background:var(--SmartThemeBlurTintColor,#0f172a);
+}
+body.st-cs-editing #right-nav-panel #st-cs-editor-menu {
+    display:flex!important;align-items:center;justify-content:flex-end;
+    flex:0 0 auto;padding:4px 12px 10px;
+    background:var(--SmartThemeBlurTintColor,#0f172a);
+}
+body.st-cs-editing #st-cs-editor-options,
+body.st-cs-editing #st-cs-extra-toggle {
+    min-height:44px;padding:10px 14px;
+    border:1px solid var(--SmartThemeBorderColor,#475569);
+    border-radius:10px;
+    background:var(--SmartThemeBlurTintColor,#1e293b);
+    color:var(--SmartThemeBodyColor,#e2e8f0);
+    font:inherit;cursor:pointer;
+}
+body.st-cs-editing #st-cs-extra-toggle {width:100%;margin:12px 0;}
+body.st-cs-editing #right-nav-panel > .scrollableInner {
+    flex:1 1 auto!important;min-height:0!important;
+    overflow:auto!important;overscroll-behavior:contain;
+    padding:0 12px 28px;
+}
+body.st-cs-editing #right-nav-panel #rm_ch_create_block {
+    display:block!important;height:auto!important;min-height:0!important;
+    overflow:visible!important;
+}
+body.st-cs-editing #right-nav-panel #form_create {
+    display:flex;flex-direction:column;gap:12px;
+    width:100%;max-width:900px;margin:0 auto;padding:0 0 20px;
+}
+body.st-cs-editing #form_create #avatar-and-name-block {
+    display:flex;flex-direction:column;gap:10px;
+}
+body.st-cs-editing #form_create #name_div,
+body.st-cs-editing #form_create #firstMessageWrapper,
+body.st-cs-editing #form_create #scenario_div,
+body.st-cs-editing #form_create #depth_prompt_div {
+    width:100%;min-width:0;
+}
+body.st-cs-editing #form_create textarea {width:100%;box-sizing:border-box;}
+body.st-cs-editing #form_create #firstmessage_textarea {min-height:160px;}
+body.st-cs-editing #form_create #scenario_pole,
+body.st-cs-editing #form_create #depth_prompt_prompt {min-height:110px;}
+/* The duplicate native action bar stays mounted for its event handlers. */
+body.st-cs-editing #form_create #avatar_controls .menu_button:not(#create_button_label),
+body.st-cs-editing #form_create #avatar_controls > label[for="char-management-dropdown"] {
+    display:none!important;
+}
+body.st-cs-editing #st-cs-extra-fields {
+    display:flex;flex-direction:column;gap:12px;
+    min-width:0;width:100%;
+}
+body.st-cs-editing.st-cs-more-open #st-cs-extra-fields #character_popup {
+    display:flex!important;
+    position:static!important;inset:auto!important;
+    flex-direction:column!important;
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    overflow:visible!important;margin:0!important;padding:0!important;
+    border:0!important;border-radius:0!important;
+    background:transparent!important;backdrop-filter:none!important;
+    box-shadow:none!important;
+}
+body.st-cs-editing #st-cs-extra-fields #character_popup_text,
+body.st-cs-editing #st-cs-extra-fields #character_cross {
+    display:none!important;
+}
+@media (max-width:600px) {
+    body.st-cs-editing #form_create #depth_prompt_div {flex-wrap:wrap;}
+    body.st-cs-editing #form_create #depth_prompt_div > * {min-width:0;}
+}
