@@ -147,7 +147,7 @@
     '.interactable', '.floating_panel_close', '.dragClose',
     '.mes_button', '.mes_edit', '.mes_copy', '.mes_delete', '.mes_swipe_left', '.mes_swipe_right',
     '.mes_regenerate', '.swipe_left', '.swipe_right', '.mes_img_swipe_left', '.mes_img_swipe_right',
-    '.character_select', '.bogus_folder_select', '.select_chat_block',
+    '.character_select', '.group_select', '.bogus_folder_select', '.select_chat_block',
     '.renameChatButton', '.deleteChatButton', '.mes_edit_done', '.mes_edit_cancel',
     '[tabindex][onclick]'
   ].join(',');
@@ -237,7 +237,11 @@
     if (el.matches('.swipe_right,.mes_img_swipe_right')) return 'Xem phản hồi tiếp theo';
     if (el.matches('.character_select')) {
       const name = clean(el.querySelector('.ch_name')?.textContent);
-      if (name) return 'Chọn nhân vật: ' + name;
+      if (name) return 'Mở trò chuyện với ' + name;
+    }
+    if (el.matches('.group_select')) {
+      const name = clean(el.querySelector('.ch_name')?.textContent);
+      if (name) return 'Mở nhóm chat ' + name;
     }
     if (el.matches('.select_chat_block')) {
       const name = clean(el.querySelector('.select_chat_block_filename')?.textContent);
@@ -299,6 +303,12 @@
 
     // Mark icon-only children as decorative only if the parent has a name.
     if (label || explicit || namedByLabel) {
+      if (el.matches('.select_chat_block')) {
+        const filename = el.querySelector('.select_chat_block_filename');
+        if (filename && !filename.matches('a,button,[role="button"]')) {
+          setAttr(filename,'aria-hidden','true');
+        }
+      }
       for (const icon of el.querySelectorAll('i.fa,.fa-solid,.fa-regular,.fas,.far,svg:not([role="img"])')) {
         if (!icon.hasAttribute('aria-label') && !icon.hasAttribute('aria-labelledby')) {
           setAttr(icon, 'aria-hidden', 'true');
