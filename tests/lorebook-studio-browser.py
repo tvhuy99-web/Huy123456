@@ -4,6 +4,7 @@
 Prepared for the final regression stage. Not run during UI development.
 """
 from pathlib import Path
+import shutil
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +19,11 @@ source = JS.replace(original_bridge, "const worldApi = () => Promise.resolve(win
 
 def main():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        chrome = next((shutil.which(name) for name in (
+            'google-chrome','google-chrome-stable','chromium','chromium-browser')
+            if shutil.which(name)), None)
+        assert chrome, 'No browser available'
+        browser = p.chromium.launch(executable_path=chrome,headless=True,args=['--no-sandbox'])
         page = browser.new_page()
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
