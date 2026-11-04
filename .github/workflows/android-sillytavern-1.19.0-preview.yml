@@ -1,4 +1,4 @@
-name: SillyTavern 1.19.0 Android update APK
+name: SillyTavern 1.19.0 Android preview APK (upgrade)
 
 on:
   workflow_dispatch:
@@ -11,11 +11,11 @@ on:
 permissions:
   contents: read
 
-# The GitHub Actions Android update build deliberately runs independently:
+# The Preview APK is built for in-place upgrades of existing preview installs:
 # a cancelled asset packaging job can take minutes to shut down.
 jobs:
   android-preview:
-    name: Build original-package SillyTavern 1.19.0 APK
+    name: Test and build SillyTavern preview.12 APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -94,7 +94,7 @@ jobs:
           keytool -list -keystore "$KEYSTORE" -storepass android -alias androiddebugkey -v > "$RUNNER_TEMP/signing-certificate.txt"
           echo "STABLE_DEBUG_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
 
-      - name: Build update APK with the original Android application ID
+      - name: Build preview APK as in-place update to preview.11
         timeout-minutes: 20
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC="app/build/outputs/apk/debug/app-debug.apk"
-          DEST="SillyTavern-1.19.0-Android-update.apk"
+          DEST="SillyTavern-1.19.0-preview.12-debug.apk"
           test -s "$SRC"
           cp "$SRC" "$DEST"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$DEST" | tee "$RUNNER_TEMP/apksigner-verification.txt"
@@ -114,35 +114,43 @@ jobs:
           fi
           BADGING="$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$DEST")"
           printf '%s\n' "$BADGING" | grep -E '^package:|^sdkVersion:'
-          if [[ "$BADGING" != *"package: name='com.jiuguan.sillytavern.android' versionCode='11911'"* ]]; then
+          if [[ "$BADGING" != *"package: name='com.jiuguan.sillytavern.android.preview' versionCode='11912'"* ]]; then
             echo "Unexpected package ID or versionCode. Refusing to publish."; exit 1
           fi
-          if [[ "$BADGING" == *"com.jiuguan.sillytavern.android.preview"* ]]; then
-            echo "Wrong isolated preview package. Refusing to publish."; exit 1
+          if [[ "$BADGING" != *"versionName='1.19.0-preview.12-debug'"* ]]; then
+            echo "Wrong preview version. Refusing to publish."; exit 1
           fi
+          # Confirm that the final APK actually contains the new UI scripts.
+          unzip -Z1 "$DEST" > "$RUNNER_TEMP/apk-entries.txt"
+          for ASSET in st-character-studio.js st-lorebook-studio.js st-extension-studio.js st-accessibility.js; do
+            grep -Fxq "assets/$ASSET" "$RUNNER_TEMP/apk-entries.txt" || {
+              echo "Missing UI asset: $ASSET"; exit 1;
+            }
+          done
           sha256sum "$DEST" | tee "$DEST.sha256"
           cat > BUILD-INFO.txt <<'INFO'
-          SillyTavern 1.19.0 Android update
+          SillyTavern 1.19.0 Android preview.12 (update for preview.11)
           SillyTavern source: official tag 1.19.0
-          Android application ID: com.jiuguan.sillytavern.android (NO .preview suffix)
-          Version code: 11911
+          Android application ID: com.jiuguan.sillytavern.android.preview
+          Version code: 11912 (replaces older preview.11 code 11910)
+          Version name: 1.19.0-preview.12-debug
           Local server: http://127.0.0.1:8001
-          Signing: fixed Huy123456 debug cert SHA256 ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699
-          IMPORTANT: Android in-place installation only works if the currently installed APK has THIS SAME signing certificate and package ID.
-          The original 1.0.0 APK may have used another (unavailable) debug key. This CI build cannot bypass Android signature checks.
-          Never uninstall the existing app before backing up user data.
+          Signing: stable Huy123456 debug cert SHA256 ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699
+          In-place upgrade preserves the existing preview application's data if Android accepts the same certificate.
+          The base package com.jiuguan.sillytavern.android is a different application; this APK updates the .preview package, not the base.
+          Never uninstall or clear data of preview.11 before updating.
+          UI scripts: character, lorebook, extensions and TalkBack checked in final APK.
           Native libraries: Termux libffi.so and DT_NEEDED closure verified before Gradle build.
-          Data: stays in the existing app sandbox ONLY when Android accepts this APK as a valid in-place update.
           Caveat: Android native tokenizer stubs may reduce token-count accuracy.
           INFO
 
-      - name: Upload original-package update APK
+      - name: Upload preview.12 APK that updates preview.11
         uses: actions/upload-artifact@v4
         with:
-          name: SillyTavern-1.19.0-Android-update
+          name: SillyTavern-1.19.0-preview.12-update
           path: |
-            SillyTavern-1.19.0-Android-update.apk
-            SillyTavern-1.19.0-Android-update.apk.sha256
+            SillyTavern-1.19.0-preview.12-debug.apk
+            SillyTavern-1.19.0-preview.12-debug.apk.sha256
             BUILD-INFO.txt
             debug-console-preview.png
             debug-prompts-preview.png
