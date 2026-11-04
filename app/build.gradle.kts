@@ -11,8 +11,8 @@ android {
         applicationId = "com.jiuguan.sillytavern.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 11911
-        versionName = "1.19.0-update.12"
+        versionCode = 11912
+        versionName = "1.19.0-preview.12"
 
         ndk {
             // ARM64 covers 99%+ of modern Android phones
@@ -38,9 +38,11 @@ android {
     }
 
     buildTypes {
-        // Keep the original app package for a potential in-place update.
-        // Android still refuses installation if the old APK used another signing key.
+        // Match existing 1.19.0-preview.11-debug installations exactly.
+        // Keeping this applicationIdSuffix and the stable signing certificate
+        // updates the same application sandbox instead of installing separately.
         debug {
+            applicationIdSuffix = ".preview"
             versionNameSuffix = "-debug"
             if (!stableDebugKeyStore.isNullOrBlank()) {
                 signingConfig = signingConfigs.getByName("stableDebug")
