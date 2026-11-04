@@ -57,6 +57,7 @@ const send = new FakeElement('div',{id:'send_but',classes:['interactable','fa-so
 const options = new FakeElement('div',{id:'options_button',classes:['interactable','fa-solid','fa-bars']});
 const composer = new FakeElement('textarea',{id:'send_textarea'});
 const filter = new FakeElement('input',{id:'unlabeled_filter'});
+filter.setAttribute('placeholder','Tìm kiếm');
 const native = new FakeElement('button',{text:'Lưu cài đặt'});
 const icon = new FakeElement('i',{classes:['fa-solid','fa-save']});
 native.append(icon);
@@ -101,6 +102,8 @@ assert.equal(composer.getAttribute('aria-label'),'Nhập tin nhắn');
 assert.equal(composer.getAttribute('role'),null,'textarea must retain native semantics');
 assert.equal(composer.getAttribute('tabindex'),null,'textarea must not get artificial tab ordering');
 assert.equal(filter.getAttribute('role'),null,'text input must not become a button');
+assert.equal(filter.getAttribute('aria-label'),null,
+  'placeholder already names search; do not duplicate it as aria-label');
 assert.equal(copyMessage.getAttribute('aria-label'),'Sao chép tin nhắn');
 assert.equal(copyMessage.getAttribute('role'),'button');
 assert.equal(previousSwipe.getAttribute('aria-label'),'Xem phản hồi trước');
@@ -108,6 +111,7 @@ assert.equal(chatEntry.getAttribute('aria-label'),'Mở cuộc trò chuyện: Cu
 assert.equal(chatEntry.children[0].getAttribute('aria-hidden'),'true',
   'history filename must not repeat the row action');
 assert.equal(groupEntry.getAttribute('aria-label'),'Mở nhóm chat Nhóm A');
+groupEntry.dataset={stCsReady:'1'};
 assert.equal(native.getAttribute('aria-label'),null,
   'visible text on a native button supplies its name without a duplicate aria-label');
 assert.equal(native.getAttribute('role'),null,'native semantic role must be preserved');
@@ -133,6 +137,10 @@ const evt={key:'Enter',target:send,preventDefault(){this.prevented=true;}};
 listeners.keydown(evt);
 assert.equal(send.clicked,true);
 assert.equal(evt.prevented,true);
+const groupEvent={key:'Enter',target:groupEntry,preventDefault(){this.prevented=true;}};
+listeners.keydown(groupEvent);
+assert.equal(groupEntry.clicked,undefined,
+  'Character Studio owns group keyboard activation when installed');
 
 runInNewContext(source,context);
 assert.equal(window.__stAndroidAccessibilityInstalled,true,'must remain installed once');
