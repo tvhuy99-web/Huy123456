@@ -292,10 +292,16 @@
       contextLabel(el) || readableText || translatedTitle || tooltip ||
       TITLE_LABELS[i18nTitle] || i18nTitle || placeholder || imageName ||
       iconName(el) || fromIdentifier(el.id);
+    // Placeholder names are already exposed by the browser.
+    const nameIsPlaceholder = isFormField && placeholder && label === placeholder;
+    if (nameIsPlaceholder && generatedUnchanged && el.hasAttribute('aria-label') &&
+        typeof el.removeAttribute === 'function') {
+      el.removeAttribute('aria-label');
+      el.removeAttribute('data-st-a11y-generated');
+      el.removeAttribute('data-st-a11y-value');
+    }
     if (!existingLabel && !existingReference && !namedByLabel && label &&
-        // Text buttons are already natively named; another aria-label
-        // needlessly replaces that name and may repeat its announcement.
-        !(native && !isFormField && readableText === label)) {
+        !nameIsPlaceholder && !(native && !isFormField && readableText === label)) {
       setAttr(el, 'aria-label', label);
       setAttr(el, 'data-st-a11y-generated', 'true');
       setAttr(el, 'data-st-a11y-value', label);
