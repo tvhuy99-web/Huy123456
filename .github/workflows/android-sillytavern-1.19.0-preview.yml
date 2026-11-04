@@ -1,4 +1,4 @@
-name: SillyTavern 1.19.0 Android preview APK
+name: SillyTavern 1.19.0 Android update APK
 
 on:
   workflow_dispatch:
@@ -11,11 +11,11 @@ on:
 permissions:
   contents: read
 
-# The GitHub Actions preview build deliberately runs independently:
+# The GitHub Actions Android update build deliberately runs independently:
 # a cancelled asset packaging job can take minutes to shut down.
 jobs:
   android-preview:
-    name: Build isolated SillyTavern 1.19.0 APK
+    name: Build original-package SillyTavern 1.19.0 APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -94,7 +94,7 @@ jobs:
           keytool -list -keystore "$KEYSTORE" -storepass android -alias androiddebugkey -v > "$RUNNER_TEMP/signing-certificate.txt"
           echo "STABLE_DEBUG_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
 
-      - name: Build separate preview APK (does not overwrite installed app)
+      - name: Build update APK with the original Android application ID
         timeout-minutes: 20
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC="app/build/outputs/apk/debug/app-debug.apk"
-          DEST="SillyTavern-1.19.0-Android-preview.apk"
+          DEST="SillyTavern-1.19.0-Android-update.apk"
           test -s "$SRC"
           cp "$SRC" "$DEST"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$DEST" | tee "$RUNNER_TEMP/apksigner-verification.txt"
@@ -112,27 +112,37 @@ jobs:
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Unexpected APK signer. Refusing to publish."; exit 1
           fi
-          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$DEST" | grep -E '^package:|^sdkVersion:'
+          BADGING="$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$DEST")"
+          printf '%s\n' "$BADGING" | grep -E '^package:|^sdkVersion:'
+          if [[ "$BADGING" != *"package: name='com.jiuguan.sillytavern.android' versionCode='11911'"* ]]; then
+            echo "Unexpected package ID or versionCode. Refusing to publish."; exit 1
+          fi
+          if [[ "$BADGING" == *"com.jiuguan.sillytavern.android.preview"* ]]; then
+            echo "Wrong isolated preview package. Refusing to publish."; exit 1
+          fi
           sha256sum "$DEST" | tee "$DEST.sha256"
           cat > BUILD-INFO.txt <<'INFO'
-          SillyTavern 1.19.0 Android preview
+          SillyTavern 1.19.0 Android update
           SillyTavern source: official tag 1.19.0
-          Android app ID suffix: .preview (installs alongside current app)
+          Android application ID: com.jiuguan.sillytavern.android (NO .preview suffix)
+          Version code: 11911
           Local server: http://127.0.0.1:8001
-          Signing: FIXED independent Huy123456 debug cert SHA256 ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699
-          Note: previous preview APK used random GitHub debug key. Back up and uninstall only old preview before first fixed-key install.
+          Signing: fixed Huy123456 debug cert SHA256 ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699
+          IMPORTANT: Android in-place installation only works if the currently installed APK has THIS SAME signing certificate and package ID.
+          The original 1.0.0 APK may have used another (unavailable) debug key. This CI build cannot bypass Android signature checks.
+          Never uninstall the existing app before backing up user data.
           Native libraries: Termux libffi.so and DT_NEEDED closure verified before Gradle build.
-          Data: isolated from existing app; import a copy of exported backup if needed
+          Data: stays in the existing app sandbox ONLY when Android accepts this APK as a valid in-place update.
           Caveat: Android native tokenizer stubs may reduce token-count accuracy.
           INFO
 
-      - name: Upload installable preview APK
+      - name: Upload original-package update APK
         uses: actions/upload-artifact@v4
         with:
-          name: SillyTavern-1.19.0-Android-preview
+          name: SillyTavern-1.19.0-Android-update
           path: |
-            SillyTavern-1.19.0-Android-preview.apk
-            SillyTavern-1.19.0-Android-preview.apk.sha256
+            SillyTavern-1.19.0-Android-update.apk
+            SillyTavern-1.19.0-Android-update.apk.sha256
             BUILD-INFO.txt
             debug-console-preview.png
             debug-prompts-preview.png
