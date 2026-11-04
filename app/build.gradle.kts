@@ -11,8 +11,8 @@ android {
         applicationId = "com.jiuguan.sillytavern.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 11910
-        versionName = "1.19.0-preview.11"
+        versionCode = 11911
+        versionName = "1.19.0-update.12"
 
         ndk {
             // ARM64 covers 99%+ of modern Android phones
@@ -20,9 +20,9 @@ android {
         }
     }
 
-    // Stable PUBLIC debug key used by Card Studio. Not a release key.
-    // In CI, each build is signed identically so all future preview APKs can
-    // be installed as updates without needing to uninstall the app again.
+    // Stable debug key for reproducible Android update builds.
+    // Updating an already installed app also requires the SAME certificate
+    // as that particular existing APK; matching applicationId alone is not enough.
     val stableDebugKeyStore = System.getenv("STABLE_DEBUG_KEYSTORE")
     if (!stableDebugKeyStore.isNullOrBlank()) {
         signingConfigs {
@@ -38,10 +38,9 @@ android {
     }
 
     buildTypes {
-        // Isolated preview install: does NOT overwrite the existing app,
-        // because GitHub's temporary debug keystore is not the user's key.
+        // Keep the original app package for a potential in-place update.
+        // Android still refuses installation if the old APK used another signing key.
         debug {
-            applicationIdSuffix = ".preview"
             versionNameSuffix = "-debug"
             if (!stableDebugKeyStore.isNullOrBlank()) {
                 signingConfig = signingConfigs.getByName("stableDebug")
