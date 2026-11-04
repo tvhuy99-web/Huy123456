@@ -76,7 +76,9 @@
                 const value = await api.stAndroidGetPresetExtensions();
                 const dialog = el('dialog', undefined, 'st-ps-popup st-ps-json-dialog');
                 dialog.setAttribute('aria-label', 'Extensions JSON');
-                dialog.append(el('h3', 'Extensions JSON'));
+                const heading = el('h3', 'Extensions JSON');
+                heading.setAttribute('aria-hidden','true');
+                dialog.append(heading);
                 const input = el('textarea');
                 input.setAttribute('aria-label', 'Extensions JSON');
                 input.spellcheck = false;
