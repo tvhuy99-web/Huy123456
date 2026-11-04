@@ -121,8 +121,9 @@ jobs:
             echo "Wrong preview version. Refusing to publish."; exit 1
           fi
           # Confirm that the final APK actually contains the new UI scripts.
+          unzip -Z1 "$DEST" > "$RUNNER_TEMP/apk-entries.txt"
           for ASSET in st-character-studio.js st-lorebook-studio.js st-extension-studio.js st-accessibility.js; do
-            unzip -Z1 "$DEST" | grep -Fxq "assets/$ASSET" || {
+            grep -Fxq "assets/$ASSET" "$RUNNER_TEMP/apk-entries.txt" || {
               echo "Missing UI asset: $ASSET"; exit 1;
             }
           done
