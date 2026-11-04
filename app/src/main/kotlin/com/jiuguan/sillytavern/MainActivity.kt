@@ -115,6 +115,7 @@ class MainActivity : AppCompatActivity() {
                 injectAndroidAccessibility(view)
                 injectPresetStudio(view)
                 injectCharacterStudio(view)
+                injectLorebookStudio(view)
             }
 
             override fun onReceivedError(
@@ -354,6 +355,27 @@ class MainActivity : AppCompatActivity() {
             view.evaluateJavascript(styleCode + "\n" + js, null)
         } catch (error: Exception) {
             android.util.Log.e("CharacterStudio", "Unable to load character studio", error)
+        }
+    }
+
+    // Android-only Lorebook presentation using the native World Info editor.
+    private fun injectLorebookStudio(view: WebView?) {
+        view ?: return
+        try {
+            val css = assets.open("st-lorebook-studio.css")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val js = assets.open("st-lorebook-studio.js")
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val styleCode = "(function() {" +
+                "if (document.getElementById('st-lorebook-studio-style')) return;" +
+                "var style = document.createElement('style');" +
+                "style.id = 'st-lorebook-studio-style';" +
+                "style.textContent = " + org.json.JSONObject.quote(css) + ";" +
+                "document.head.appendChild(style);" +
+                "})();"
+            view.evaluateJavascript(styleCode + "\n" + js, null)
+        } catch (error: Exception) {
+            android.util.Log.e("LorebookStudio", "Unable to load Lorebook Studio", error)
         }
     }
 
