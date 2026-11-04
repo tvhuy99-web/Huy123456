@@ -44,11 +44,12 @@
         const heading = make('h2', 'Nhân vật');
         const more = button('Tùy chọn khác', openMore);
         more.id = 'st-cs-more';
-        const sortLabel = make('label', 'Thứ tự sắp xếp nhân vật');
-        sortLabel.htmlFor = 'character_sort_order';
-        sortLabel.className = 'st-cs-label';
+        // The native select already exposes the selected sort order.
+        sort.removeAttribute('title');
+        sort.removeAttribute('data-i18n');
+        sort.setAttribute('aria-label','Sắp xếp nhân vật');
         search.placeholder = 'Tìm kiếm nhân vật';
-        search.setAttribute('aria-label', 'Tìm kiếm nhân vật');
+        search.removeAttribute('aria-label');
         searchBlock.classList.add('st-cs-search');
         for (const option of Array.from(sort.options)) {
             const labels = {
@@ -70,26 +71,24 @@
                 option.removeAttribute('data-i18n');
             }
         }
-        toolbar.append(heading, more, sortLabel, sort, searchBlock);
+        toolbar.append(heading, more, sort, searchBlock);
         fixedTop.prepend(toolbar);
         listPanel.classList.add('st-cs-enabled');
 
-        // Native list items stay the native live nodes. Only add accessible
-        // roles to their existing name spans and support long-press actions.
+        // One named accessibility action per character. Preserve the live
+        // children for native handlers and the interactive tag filter.
         function prepareNativeCards() {
             for (const card of nativeList.querySelectorAll('.character_select[data-chid]')) {
+                const label = card.querySelector('.ch_name')?.textContent?.trim() || 'Nhân vật';
+                card.setAttribute('role','button');
+                card.tabIndex = 0;
+                card.setAttribute('aria-label','Mở trò chuyện với ' + label);
+                card.querySelector('.character_name_block')?.setAttribute('aria-hidden','true');
+                card.querySelector('.avatar')?.setAttribute('aria-hidden','true');
                 if (card.dataset.stCsReady) continue;
                 card.dataset.stCsReady = '1';
-                card.setAttribute('role', 'button');
-                card.tabIndex = 0;
-                const name = card.querySelector('.ch_name');
-                const label = name?.textContent?.trim() || 'Nhân vật';
-                card.setAttribute('aria-label', 'Mở trò chuyện với ' + label);
-                if (name) {
-                    name.setAttribute('role', 'heading');
-                    name.setAttribute('aria-level', '3');
-                }
                 card.addEventListener('keydown', event => {
+                    if (event.target !== card) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         card.click();
@@ -103,6 +102,66 @@
             clearTimeout(cardRefresh);
             cardRefresh = setTimeout(prepareNativeCards, 60);
         }).observe(nativeList, { childList:true, subtree:true });
+
+        // Keep SillyTavern's pagination logic, but only expose it when
+        // there is more than one page. The native size selector persists
+        // the user's chosen page size through AccountStorage.
+        const pagination = byId('rm_print_characters_pagination');
+        let pageSizeInitialized = false;
+        function updateCharacterPagination() {
+            if (!pagination) return;
+            const sizeSelect = pagination.querySelector('.J-paginationjs-size-select');
+            if (sizeSelect && !pageSizeInitialized) {
+                pageSizeInitialized = true;
+                try {
+                    const key = 'st_cs_page_size_100';
+                    if (!localStorage.getItem(key) && sizeSelect.value === '50' &&
+                        Array.from(sizeSelect.options).some(option => option.value === '100')) {
+                        localStorage.setItem(key,'1');
+                        sizeSelect.value = '100';
+                        sizeSelect.dispatchEvent(new Event('change',{bubbles:true}));
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('[Character Studio] Page size preference unavailable',error);
+                }
+            }
+            const previous = pagination.querySelector('.paginationjs-pages .paginationjs-prev');
+            const next = pagination.querySelector('.paginationjs-pages .paginationjs-next');
+            const onePage = Boolean(previous && next &&
+                previous.classList.contains('disabled') &&
+                next.classList.contains('disabled'));
+            pagination.classList.toggle('st-cs-single-page',onePage);
+            const controlLabels = {
+                'paginationjs-first':'Trang đầu',
+                'paginationjs-prev':'Trang trước',
+                'paginationjs-next':'Trang sau',
+                'paginationjs-last':'Trang cuối',
+            };
+            for (const [className,label] of Object.entries(controlLabels)) {
+                for (const item of pagination.querySelectorAll('.paginationjs-pages .' + className)) {
+                    const link = item.querySelector('a, button');
+                    if (!link) continue;
+                    if (item.classList.contains('disabled')) {
+                        link.setAttribute('aria-hidden','true');
+                        link.tabIndex = -1;
+                    } else {
+                        link.removeAttribute('aria-hidden');
+                        link.removeAttribute('tabindex');
+                        link.removeAttribute('title');
+                        link.setAttribute('aria-label',label);
+                    }
+                }
+            }
+        }
+        if (pagination) {
+            updateCharacterPagination();
+            let paginationRefresh;
+            new MutationObserver(() => {
+                clearTimeout(paginationRefresh);
+                paginationRefresh = setTimeout(updateCharacterPagination,50);
+            }).observe(pagination,{childList:true,subtree:true});
+        }
 
         // Keep original bulk edit, tag filters and extension-added toolbar
         // slots mounted. These actions are reachable in the compact menu.
@@ -276,7 +335,10 @@
                 card.setAttribute('role','button');
                 card.setAttribute('aria-label','Mở nhóm chat ' +
                     (card.querySelector('.ch_name')?.textContent?.trim() || ''));
+                card.querySelector('.ch_name')?.setAttribute('aria-hidden','true');
+                card.querySelector('.avatar')?.setAttribute('aria-hidden','true');
                 card.addEventListener('keydown',event=>{
+                    if (event.target !== card) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();card.click();
                     }
