@@ -23,7 +23,7 @@ source = (root / 'app/src/main/assets/st-character-studio.js').read_text(encodin
 theme = (root / 'app/src/main/assets/st-character-studio.css').read_text(encoding='utf-8')
 assert '#rm_print_characters_block' in theme
 assert 'new URL(' in source
-assert 'nativeClick(target)' in source
+assert 'nativeClick(action.id)' in source
 assert 'getElementById' in source
 assert 'characters?.[id]' in source || 'scriptApi.characters?.[id]' in source
 assert 'nativeCharacterActions' in source
