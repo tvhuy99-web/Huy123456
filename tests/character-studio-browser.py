@@ -126,15 +126,25 @@ with sync_playwright() as p:
     assert page.locator('#send_textarea').count() == 1
     assert page.locator('#form_create').count() == 1
     assert page.locator('#st-character-toolbar #character_sort_order').count() == 1
+    assert page.locator('#character_sort_order').is_hidden()
+    assert page.locator('#character_sort_order').get_attribute('aria-hidden') == 'true'
+    assert page.locator('#st-cs-sort').is_visible()
     assert page.locator('#st-character-toolbar #character_search_bar').count() == 1
     assert page.locator('#st-character-toolbar .st-cs-label').count() == 0
-    assert page.locator('#character_sort_order').get_attribute('aria-label') == 'Sắp xếp nhân vật'
+    assert page.locator('#character_sort_order').get_attribute('aria-label') is None
     assert page.locator('#character_search_bar').get_attribute('aria-label') is None
     sort_labels=page.locator('#character_sort_order option:not([hidden])').all_inner_texts()
     assert sort_labels == ['A-Z','Z-A','Mới nhất','Cũ nhất','Yêu thích','Gần đây',
         'Nhiều cuộc trò chuyện nhất','Ít cuộc trò chuyện nhất',
         'Nhiều token nhất','Ít token nhất','Ngẫu nhiên'], sort_labels
     page.locator('#character_sort_order').select_option(index=1)
+    assert page.locator('#st-cs-sort').inner_text()=='Sắp xếp: A-Z'
+    page.locator('#st-cs-sort').click()
+    sort_menu=page.get_by_role('dialog')
+    assert sort_menu.get_by_role('button',name='Mới nhất').count()==1
+    sort_menu.get_by_role('button',name='Mới nhất').click()
+    assert page.locator('#st-cs-sort').inner_text()=='Sắp xếp: Mới nhất'
+    assert page.locator('#character_sort_order option:checked').inner_text()=='Mới nhất'
     page.locator('#character_search_bar').fill('Alice')
     assert page.locator('#character_search_bar').input_value()=='Alice'
     page.locator('#st-cs-more').click()
