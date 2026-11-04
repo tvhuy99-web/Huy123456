@@ -137,7 +137,8 @@ with sync_playwright() as p:
     assert sort_labels == ['A-Z','Z-A','Mới nhất','Cũ nhất','Yêu thích','Gần đây',
         'Nhiều cuộc trò chuyện nhất','Ít cuộc trò chuyện nhất',
         'Nhiều token nhất','Ít token nhất','Ngẫu nhiên'], sort_labels
-    page.locator('#character_sort_order').select_option(index=1)
+    page.locator('#st-cs-sort').click()
+    page.get_by_role('dialog').get_by_role('button',name='A-Z').click()
     assert page.locator('#st-cs-sort').inner_text()=='Sắp xếp: A-Z'
     page.locator('#st-cs-sort').click()
     sort_menu=page.get_by_role('dialog')
