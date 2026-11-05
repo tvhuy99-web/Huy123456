@@ -176,7 +176,7 @@
     // message is not a single giant TalkBack element.
     function splitText(text) {
         if (text.length <= 500) return [text];
-        const tokens = text.split(/(\\n[ \\t]*\\n+)/);
+        const tokens = text.split(/(\n[ \t]*\n+)/);
         const paragraphs = [];
         for (let i=0;i<tokens.length;i+=2) {
             const chunk = tokens[i] + (tokens[i+1] || '');
@@ -190,7 +190,7 @@
             }
             let rest = paragraph;
             while (rest.length > 850) {
-                let cut = Math.max(rest.lastIndexOf('\\n', 850),rest.lastIndexOf(' ',850));
+                let cut = Math.max(rest.lastIndexOf('\n', 850),rest.lastIndexOf(' ',850));
                 if (cut < 400) cut = 850;
                 else cut += 1;
                 pieces.push(rest.slice(0,cut));
