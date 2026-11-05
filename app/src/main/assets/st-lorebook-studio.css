@@ -71,11 +71,15 @@
     background:var(--SmartThemeBlurTintColor);
     color:var(--SmartThemeBodyColor);
 }
+#WorldInfo .st-wi-switch {
+    display:flex;align-items:center;justify-content:center;
+}
 #WorldInfo .st-wi-switch::after {
-    content:'○';font-size:24px;line-height:1;
+    content:'';width:18px;height:18px;box-sizing:border-box;
+    border:2px solid currentColor;border-radius:50%;
 }
 #WorldInfo .st-wi-switch[aria-checked="true"]::after {
-    content:'●';
+    background:currentColor;
 }
 #WorldInfo .st-wi-preview {
     white-space:pre-wrap;overflow-wrap:anywhere;
