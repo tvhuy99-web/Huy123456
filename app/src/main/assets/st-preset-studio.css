@@ -113,3 +113,39 @@
 .st-ps-preview-dialog .st-ps-preview-message pre {
     margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#cbd5e1;
 }
+
+/* Native prompt assembly: preserve source-group hierarchy and make each
+   component/paragraph navigable by TalkBack heading gestures. */
+.st-ps-preview-dialog .st-ps-assembled-preview {
+    display:flex;flex-direction:column;gap:10px;min-width:0;
+}
+.st-ps-preview-dialog .st-ps-preview-group {
+    padding:10px;border:1px solid #334155;border-radius:10px;min-width:0;
+}
+.st-ps-preview-dialog .st-ps-preview-group .st-ps-preview-group {
+    margin-top:9px;padding:8px;
+}
+.st-ps-preview-dialog .st-ps-preview-group h4,
+.st-ps-preview-dialog .st-ps-preview-group h5,
+.st-ps-preview-dialog .st-ps-preview-group h6,
+.st-ps-preview-dialog .st-ps-preview-part h4,
+.st-ps-preview-dialog .st-ps-preview-part h5,
+.st-ps-preview-dialog .st-ps-preview-part h6 {
+    font-size:14px;margin:12px 0 6px;font-weight:650;
+    overflow-wrap:anywhere;color:#e2e8f0;
+}
+.st-ps-preview-dialog .st-ps-preview-group > :first-child,
+.st-ps-preview-dialog .st-ps-preview-part > :first-child {
+    margin-top:0;
+}
+.st-ps-preview-dialog .st-ps-preview-role {
+    margin:4px 0 8px;font-size:13px;opacity:.85;
+}
+.st-ps-preview-dialog .st-ps-preview-part {
+    padding:8px 4px 4px;border-top:1px solid #334155;
+    min-width:0;
+}
+.st-ps-preview-dialog .st-ps-assembled-preview pre {
+    white-space:pre-wrap;overflow-wrap:anywhere;
+    margin:4px 0 10px;max-width:100%;
+}
