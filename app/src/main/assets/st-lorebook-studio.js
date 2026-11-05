@@ -249,9 +249,9 @@
             row.querySelector('[name="entryKillSwitch"]')?.click();
             syncSwitch();
         },'st-wi-switch');
-        switchButton.setAttribute('role','switch');
+        switchButton.setAttribute('role','checkbox');
         // TalkBack reads the checked state; the adjacent heading names the entry.
-        switchButton.setAttribute('aria-label','Bật/tắt');
+        // The checked state is announced without repeating the Lorebook title.
         const titleHeading = make('h3',undefined,'st-wi-title');
         const titleButton = button(name,() => {
             if (titleButton.dataset.suppressClick === '1') {
