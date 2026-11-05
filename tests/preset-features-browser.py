@@ -103,15 +103,10 @@ with sync_playwright() as playwright:
                 identifier:'rule-'+(i+1),role:'system',
                 content:'Quy tắc '+(i+1)+': '+('Nội dung dài. '.repeat(90))
             }));
-            this.messages={
-                identifier:'root',
-                getCollection(){return [
-                    {identifier:'ruleset',getCollection(){return messages.slice(0,19)}},
-                    {identifier:'ruleset-continued',getCollection(){return [
-                        {identifier:'nested',getCollection(){return messages.slice(19)}}
-                    ]}}
-                ]};
-            };
+            const first={identifier:'ruleset',getCollection:()=>messages.slice(0,19)};
+            const nested={identifier:'nested',getCollection:()=>messages.slice(19)};
+            const second={identifier:'ruleset-continued',getCollection:()=>[nested]};
+            this.messages={identifier:'root',getCollection:()=>[first,second]};
         };
     }""")
     page.locator('#st-ps-preview').click()
