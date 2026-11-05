@@ -261,7 +261,7 @@ const get = id => document.getElementById(id);
             const id = row.identifier;
             const article = make('article', '', 'st-ps-prompt');
             const header = make('div', '', 'st-ps-heading');
-            const toggle = action(row.enabled ? 'Bật' : 'Tắt', () => {
+            const toggle = action('', () => {
                 const original = nativePrompt(id);
                 if (original) pm.handleToggle({ target: original });
             });
@@ -269,10 +269,13 @@ const get = id => document.getElementById(id);
             toggle.dataset.presetPromptId = id;
             toggle.setAttribute('role','switch');
             toggle.setAttribute('aria-checked',String(!!row.enabled));
-            toggle.setAttribute('aria-label','Lời nhắc ' + (p.name || 'Không tên'));
+            // The switch announces its checked state. Do not repeat the
+            // prompt title, which is the next independently navigable heading.
+            toggle.setAttribute('aria-label','Bật/tắt');
             toggle.disabled = !pm.isPromptToggleAllowed(p);
+            // A real heading with a focusable title button is both a
+            // TalkBack heading navigation target and one edit action.
             const h = make('h3','');
-            h.setAttribute('role','presentation');
             const title = action(p.name || 'Lời nhắc', () => {
                 if (suppress) { suppress = false; return; }
                 if (!moving) edit(id);
