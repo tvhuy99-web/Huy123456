@@ -267,11 +267,11 @@ const get = id => document.getElementById(id);
             });
             toggle.className = 'st-ps-switch';
             toggle.dataset.presetPromptId = id;
-            toggle.setAttribute('role','switch');
+            toggle.setAttribute('role','checkbox');
             toggle.setAttribute('aria-checked',String(!!row.enabled));
             // The switch announces its checked state. Do not repeat the
             // prompt title, which is the next independently navigable heading.
-            toggle.setAttribute('aria-label','Bật/tắt');
+            // The checkbox state is sufficient; the neighboring heading names this prompt.
             toggle.disabled = !pm.isPromptToggleAllowed(p);
             // A real heading with a focusable title button is both a
             // TalkBack heading navigation target and one edit action.
