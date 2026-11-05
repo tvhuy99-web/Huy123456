@@ -136,7 +136,9 @@ def main():
         assert page.get_by_role('heading', name='Tiêu đề A').count() == 1
         assert page.get_by_role('button',name='Tiêu đề A').count() == 1
         assert page.locator('.st-wi-preview').inner_text() == 'Đầy đủ nội dung mục A.'
-        switch=page.get_by_role('switch',name='Kích hoạt Tiêu đề A')
+        switch=page.get_by_role('checkbox')
+        assert switch.count() == 1
+        assert switch.get_attribute('aria-label') is None
         assert switch.get_attribute('aria-checked') == 'true'
         switch.click()
         assert switch.get_attribute('aria-checked') == 'false'

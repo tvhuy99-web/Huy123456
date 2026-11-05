@@ -126,19 +126,80 @@
         advanced.append(jsonGroup);
     }
 
-    // Native MessageCollection is a tree, not a flat message list.
-    function collectMessages(node, output = [], depth = 0) {
-        if (!node || depth > 50) return output;
+    // Render EXACTLY ONE section and one heading for every native outgoing
+    // Message, regardless of length. A MessageCollection contains grouped
+    // message sources, but it is NOT itself an outgoing prompt. Do not add
+    // extra group entries or split one message into fake "part" prompts.
+    const sourceTitles = {
+        main:'Lời nhắc chính', nsfw:'Lời nhắc NSFW',
+        jailbreak:'Lời nhắc bổ sung', enhanceDefinitions:'Hướng dẫn mở rộng',
+        worldInfoBefore:'Lorebook trước nhân vật',
+        worldInfoAfter:'Lorebook sau nhân vật',
+        charDescription:'Mô tả nhân vật', charPersonality:'Tính cách nhân vật',
+        scenario:'Kịch bản', personaDescription:'Mô tả người dùng',
+        dialogueExamples:'Ví dụ hội thoại', chatHistory:'Lịch sử trò chuyện',
+        controlPrompts:'Lời nhắc điều khiển', quietPrompt:'Lời nhắc phụ',
+        continueNudge:'Lời nhắc tiếp tục', groupNudge:'Lời nhắc nhóm',
+        impersonate:'Nhập vai người dùng', newMainChat:'Bắt đầu cuộc trò chuyện',
+        newChat:'Bắt đầu ví dụ hội thoại',
+    };
+    const roles = {
+        system:'Hệ thống', developer:'Nhà phát triển',
+        user:'Người dùng', assistant:'Trợ lý', tool:'Công cụ',
+    };
+    function sourceName(identifier, pm) {
+        const id=String(identifier || '').trim();
+        if (!id) return '';
+        const known=sourceTitles[id] || pm?.getPromptById?.(id)?.name;
+        if (known) return String(known).trim();
+        // SillyTavern assigns UUIDs to user-defined prompts. They are
+        // storage identifiers, not helpful heading labels for TalkBack.
+        if (/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)) return '';
+        return id;
+    }
+    function collectOutgoingPrompts(node, output = [], context = [], depth = 0) {
+        if (!node || depth > 100) return output;
         if (Array.isArray(node)) {
-            for (const child of node) collectMessages(child, output, depth + 1);
-        } else if (typeof node.getCollection === 'function') {
-            collectMessages(node.getCollection(), output, depth + 1);
-        } else if (typeof node === 'object' && Array.isArray(node.collection)) {
-            collectMessages(node.collection, output, depth + 1);
-        } else if (typeof node === 'object' && typeof node.role === 'string') {
-            if (node.content || node.tool_calls?.length) output.push(node);
+            for (const child of node) collectOutgoingPrompts(child,output,context,depth+1);
+            return output;
+        }
+        const children = typeof node.getCollection === 'function'
+            ? node.getCollection()
+            : Array.isArray(node.collection) ? node.collection : null;
+        if (children) {
+            const identifier=String(node.identifier || '').trim();
+            const path=identifier && identifier !== 'root'
+                ? context.concat(identifier) : context;
+            collectOutgoingPrompts(children,output,path,depth+1);
+        } else if (typeof node.role === 'string' &&
+            (node.content || node.tool_calls?.length || node.reasoning)) {
+            output.push({message:node,source:context});
         }
         return output;
+    }
+    function renderOutgoingPrompts(prompts, container, pm) {
+        prompts.forEach(({message:msg,source},index) => {
+            const item=el('section',undefined,'st-ps-preview-message');
+            item.dataset.outgoingPrompt=String(index+1);
+            const role=roles[msg.role] || msg.role;
+            const ownSource=sourceName(msg.identifier,pm);
+            const ancestorSource=source.slice().reverse()
+                .map(name=>sourceName(name,pm)).find(Boolean);
+            const name=ownSource || ancestorSource;
+            // No extra group headings, so N native outgoing messages have
+            // exactly N navigable headings, even if one is thousands of words.
+            const heading='Lời nhắc '+(index+1)+(name?' · '+name:'')+' · '+role;
+            item.append(el('h4',heading));
+            const body=printContent(msg.content);
+            if (body) item.append(el('pre',body));
+            if (msg.tool_calls?.length) {
+                item.append(el('pre',JSON.stringify(msg.tool_calls,null,2)));
+            }
+            if (typeof msg.reasoning==='string' && msg.reasoning) {
+                item.append(el('pre',msg.reasoning));
+            }
+            container.append(item);
+        });
     }
     function printContent(content) {
         if (typeof content === 'string') return content;
@@ -152,10 +213,6 @@
             return '[Nội dung đa phương thức]';
         }).filter(Boolean).join('\n');
     }
-    const roles = {
-        system: 'Hệ thống', developer: 'Nhà phát triển',
-        user: 'Người dùng', assistant: 'Trợ lý', tool: 'Công cụ',
-    };
     previewButton.addEventListener('click', async event => {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -164,7 +221,7 @@
             const pm = (await nativeApi()).promptManager;
             if (!pm) throw new Error('Prompt Manager unavailable');
             await pm.tryGenerate(); // Original SillyTavern dry-run, never sends to AI.
-            const messages = collectMessages(pm.messages);
+            const outgoing = collectOutgoingPrompts(pm.messages);
             const dialog = el('dialog', undefined, 'st-ps-popup st-ps-preview-dialog');
             dialog.setAttribute('aria-label', 'Xem trước lời nhắc gửi tới AI');
             const heading = el('h3', 'Xem trước lời nhắc gửi tới AI');
@@ -176,15 +233,8 @@
                 warning.setAttribute('role', 'alert');
                 content.append(warning);
             }
-            if (!messages.length) content.append(el('p', 'Không có thông điệp nào để xem trước.'));
-            for (const msg of messages) {
-                const item = el('section', undefined, 'st-ps-preview-message');
-                item.append(el('h4', roles[msg.role] || msg.role));
-                const contentText = printContent(msg.content) ||
-                    (msg.tool_calls?.length ? '[Lời gọi công cụ]' : '');
-                item.append(el('pre', contentText));
-                content.append(item);
-            }
+            if (!outgoing.length) content.append(el('p', 'Không có thông điệp nào để xem trước.'));
+            renderOutgoingPrompts(outgoing,content,pm);
             dialog.append(content, btn('Đóng', () => dialog.close()));
             dialog.addEventListener('close', () => { dialog.remove(); previewButton.focus(); });
             document.body.append(dialog);

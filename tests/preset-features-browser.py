@@ -91,6 +91,32 @@ with sync_playwright() as playwright:
     body = page.get_by_role('dialog').inner_text()
     assert all(s in body for s in ('Hệ thống', 'Bạn là Alice.', 'Người dùng', 'Chào Alice!', 'Trợ lý', '[Hình ảnh]'))
     assert '\nsystem\n\n' not in body
+    assert page.locator('.st-ps-preview-message').count() == 3
+    assert page.locator('.st-ps-preview-message h4').count() == 3
+    page.get_by_role('dialog').get_by_text('Đóng').click()
+    # Regression for a 38-prompt ruleset: 38 native messages must produce
+    # exactly 38 sections/headings, NEVER one section per paragraph or group.
+    page.evaluate("""() => {
+        const pm=window.__nativeAPI.promptManager;
+        pm.tryGenerate=async function() {
+            const messages=Array.from({length:38},(_,i)=>({
+                identifier:'rule-'+(i+1),role:'system',
+                content:'Quy tắc '+(i+1)+': '+('Nội dung dài. '.repeat(90))
+            }));
+            const first={identifier:'ruleset',getCollection:()=>messages.slice(0,19)};
+            const nested={identifier:'nested',getCollection:()=>messages.slice(19)};
+            const second={identifier:'ruleset-continued',getCollection:()=>[nested]};
+            this.messages={identifier:'root',getCollection:()=>[first,second]};
+        };
+    }""")
+    page.locator('#st-ps-preview').click()
+    assert page.locator('.st-ps-preview-message').count() == 38
+    assert page.locator('.st-ps-preview-message h4').count() == 38
+    assert page.locator('.st-ps-preview-group').count() == 0
+    assert page.locator('.st-ps-preview-part').count() == 0
+    assert page.locator('.st-ps-preview-message').first.locator('pre').count() == 1
+    assert 'Quy tắc 38:' in page.locator('.st-ps-preview-message').last.inner_text()
+    assert len(page.locator('.st-ps-preview-message').last.locator('pre').inner_text()) > 1000
     page.get_by_role('dialog').get_by_text('Đóng').click()
     assert 'Chỉ áp dụng cho những kiểu tạo phản hồi được chọn.' in page.locator('#completion_prompt_manager_popup').inner_text()
     assert 'Đặt tương đối so với các lời nhắc khác' in page.locator('#completion_prompt_manager_popup').inner_text()

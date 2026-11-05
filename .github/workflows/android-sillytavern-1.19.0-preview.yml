@@ -8,6 +8,7 @@ on:
       - upgrade/sillytavern-1.19.0
       - feat/character-editor-compact-menu
       - feat/a11y-drawers-and-background-generation
+      - fix/preset-heading-switch-assembled-sections
 
 permissions:
   contents: read
@@ -16,7 +17,7 @@ permissions:
 # a cancelled asset packaging job can take minutes to shut down.
 jobs:
   android-preview:
-    name: Test and build SillyTavern preview.13 APK
+    name: Test and build SillyTavern preview.14 APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -107,7 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC="app/build/outputs/apk/debug/app-debug.apk"
-          DEST="SillyTavern-1.19.0-preview.13-debug.apk"
+          DEST="SillyTavern-1.19.0-preview.14-debug.apk"
           test -s "$SRC"
           cp "$SRC" "$DEST"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$DEST" | tee "$RUNNER_TEMP/apksigner-verification.txt"
@@ -118,10 +119,10 @@ jobs:
           fi
           BADGING="$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$DEST")"
           printf '%s\n' "$BADGING" | grep -E '^package:|^sdkVersion:'
-          if [[ "$BADGING" != *"package: name='com.jiuguan.sillytavern.android.preview' versionCode='11913'"* ]]; then
+          if [[ "$BADGING" != *"package: name='com.jiuguan.sillytavern.android.preview' versionCode='11914'"* ]]; then
             echo "Unexpected package ID or versionCode. Refusing to publish."; exit 1
           fi
-          if [[ "$BADGING" != *"versionName='1.19.0-preview.13-debug'"* ]]; then
+          if [[ "$BADGING" != *"versionName='1.19.0-preview.14-debug'"* ]]; then
             echo "Wrong preview version. Refusing to publish."; exit 1
           fi
           # Confirm that the final APK actually contains the new UI scripts.
@@ -133,11 +134,11 @@ jobs:
           done
           sha256sum "$DEST" | tee "$DEST.sha256"
           cat > BUILD-INFO.txt <<'INFO'
-          SillyTavern 1.19.0 Android preview.13 (update for preview.12 and preview.11)
+          SillyTavern 1.19.0 Android preview.14 (update for preview.13, preview.12 and preview.11)
           SillyTavern source: official tag 1.19.0
           Android application ID: com.jiuguan.sillytavern.android.preview
-          Version code: 11913 (replaces older preview.12 code 11912)
-          Version name: 1.19.0-preview.13-debug
+          Version code: 11914 (replaces older preview.13 code 11913)
+          Version name: 1.19.0-preview.14-debug
           Local server: http://127.0.0.1:8001
           Signing: stable Huy123456 debug cert SHA256 ab791c992c301be6837fd7946fe6ac403d1b670034a1f1a7883bde6204921699
           In-place upgrade preserves the existing preview application's data if Android accepts the same certificate.
@@ -149,13 +150,13 @@ jobs:
           Caveat: Android native tokenizer stubs may reduce token-count accuracy.
           INFO
 
-      - name: Upload preview.13 APK that updates preview.12
+      - name: Upload preview.14 APK that updates preview.13
         uses: actions/upload-artifact@v4
         with:
-          name: SillyTavern-1.19.0-preview.13-update
+          name: SillyTavern-1.19.0-preview.14-update
           path: |
-            SillyTavern-1.19.0-preview.13-debug.apk
-            SillyTavern-1.19.0-preview.13-debug.apk.sha256
+            SillyTavern-1.19.0-preview.14-debug.apk
+            SillyTavern-1.19.0-preview.14-debug.apk.sha256
             BUILD-INFO.txt
             debug-console-preview.png
             debug-prompts-preview.png

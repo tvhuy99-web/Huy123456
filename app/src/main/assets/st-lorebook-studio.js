@@ -249,8 +249,9 @@
             row.querySelector('[name="entryKillSwitch"]')?.click();
             syncSwitch();
         },'st-wi-switch');
-        switchButton.setAttribute('role','switch');
-        switchButton.setAttribute('aria-label','Kích hoạt ' + name);
+        switchButton.setAttribute('role','checkbox');
+        // TalkBack reads the checked state; the adjacent heading names the entry.
+        // The checked state is announced without repeating the Lorebook title.
         const titleHeading = make('h3',undefined,'st-wi-title');
         const titleButton = button(name,() => {
             if (titleButton.dataset.suppressClick === '1') {
@@ -302,7 +303,7 @@
             if (event.target?.matches('textarea[name="comment"]')) {
                 const nextName=event.target.value.trim() || 'Mục '+uid;
                 titleButton.textContent=nextName;
-                switchButton.setAttribute('aria-label','Kích hoạt '+nextName);
+                // The switch label intentionally stays short.
             }
             if (event.target?.matches('textarea[name="content"]')) {
                 preview.textContent=event.target.value;
