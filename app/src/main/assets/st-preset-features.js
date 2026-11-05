@@ -126,151 +126,75 @@
         advanced.append(jsonGroup);
     }
 
-    // SillyTavern's MessageCollection is a hierarchy, with identifiers
-    // such as main, charDescription, worldInfoBefore, dialogueExamples and
-    // chatHistory. Never flatten it: each source must remain navigable.
-    function collectMessageTree(node, depth = 0) {
-        if (!node || depth > 50) return [];
-        if (Array.isArray(node)) {
-            return node.flatMap(child => collectMessageTree(child, depth + 1));
-        }
-        const children = typeof node.getCollection === 'function'
-            ? node.getCollection()
-            : Array.isArray(node.collection) ? node.collection : null;
-        if (children) {
-            const items = collectMessageTree(children, depth + 1);
-            if (!items.length) return [];
-            // "root" is only an implementation wrapper, not a prompt source.
-            if (!node.identifier || node.identifier === 'root') return items;
-            return [{ kind:'group', identifier:String(node.identifier), items }];
-        }
-        if (typeof node.role === 'string' &&
-            (node.content || node.tool_calls?.length || node.reasoning)) {
-            return [{ kind:'message', message:node }];
-        }
-        return [];
-    }
+    // Render EXACTLY ONE section and one heading for every native outgoing
+    // Message, regardless of length. A MessageCollection contains grouped
+    // message sources, but it is NOT itself an outgoing prompt. Do not add
+    // extra group entries or split one message into fake "part" prompts.
     const sourceTitles = {
         main:'Lời nhắc chính', nsfw:'Lời nhắc NSFW',
         jailbreak:'Lời nhắc bổ sung', enhanceDefinitions:'Hướng dẫn mở rộng',
         worldInfoBefore:'Lorebook trước nhân vật',
         worldInfoAfter:'Lorebook sau nhân vật',
-        charDescription:'Mô tả nhân vật',
-        charPersonality:'Tính cách nhân vật',
+        charDescription:'Mô tả nhân vật', charPersonality:'Tính cách nhân vật',
         scenario:'Kịch bản', personaDescription:'Mô tả người dùng',
-        dialogueExamples:'Ví dụ hội thoại',
-        chatHistory:'Lịch sử trò chuyện',
-        controlPrompts:'Lời nhắc điều khiển',
-        quietPrompt:'Lời nhắc phụ', continueNudge:'Lời nhắc tiếp tục',
-        groupNudge:'Lời nhắc nhóm', impersonate:'Nhập vai người dùng',
-        newMainChat:'Bắt đầu cuộc trò chuyện',
+        dialogueExamples:'Ví dụ hội thoại', chatHistory:'Lịch sử trò chuyện',
+        controlPrompts:'Lời nhắc điều khiển', quietPrompt:'Lời nhắc phụ',
+        continueNudge:'Lời nhắc tiếp tục', groupNudge:'Lời nhắc nhóm',
+        impersonate:'Nhập vai người dùng', newMainChat:'Bắt đầu cuộc trò chuyện',
         newChat:'Bắt đầu ví dụ hội thoại',
     };
+    const roles = {
+        system:'Hệ thống', developer:'Nhà phát triển',
+        user:'Người dùng', assistant:'Trợ lý', tool:'Công cụ',
+    };
     function sourceName(identifier, pm) {
-        const id = String(identifier || '').trim();
+        const id=String(identifier || '').trim();
         if (!id) return '';
         return sourceTitles[id] || pm?.getPromptById?.(id)?.name || id;
     }
-    // Preserve ALL rendered characters, including original spacing. Split
-    // long paragraphs at readable boundaries so one several-thousand-word
-    // message is not a single giant TalkBack element.
-    function splitText(text) {
-        if (text.length <= 500) return [text];
-        const tokens = text.split(/(\n[ \t]*\n+)/);
-        const paragraphs = [];
-        for (let i=0;i<tokens.length;i+=2) {
-            const chunk = tokens[i] + (tokens[i+1] || '');
-            if (chunk) paragraphs.push(chunk);
+    function collectOutgoingPrompts(node, output = [], context = [], depth = 0) {
+        if (!node || depth > 100) return output;
+        if (Array.isArray(node)) {
+            for (const child of node) collectOutgoingPrompts(child,output,context,depth+1);
+            return output;
         }
-        const pieces = [];
-        for (const paragraph of paragraphs) {
-            if (paragraph.length <= 850) {
-                pieces.push(paragraph);
-                continue;
-            }
-            let rest = paragraph;
-            while (rest.length > 850) {
-                let cut = Math.max(rest.lastIndexOf('\n', 850),rest.lastIndexOf(' ',850));
-                if (cut < 400) cut = 850;
-                else cut += 1;
-                pieces.push(rest.slice(0,cut));
-                rest = rest.slice(cut);
-            }
-            if (rest) pieces.push(rest);
+        const children = typeof node.getCollection === 'function'
+            ? node.getCollection()
+            : Array.isArray(node.collection) ? node.collection : null;
+        if (children) {
+            const identifier=String(node.identifier || '').trim();
+            const path=identifier && identifier !== 'root'
+                ? context.concat(identifier) : context;
+            collectOutgoingPrompts(children,output,path,depth+1);
+        } else if (typeof node.role === 'string' &&
+            (node.content || node.tool_calls?.length || node.reasoning)) {
+            output.push({message:node,source:context});
         }
-        return pieces.length ? pieces : [text];
+        return output;
     }
-    function renderAssembledTree(tree, target, pm) {
-        const rolesByName = {
-            system:'Hệ thống', developer:'Nhà phát triển',
-            user:'Người dùng', assistant:'Trợ lý', tool:'Công cụ',
-        };
-        let sequence = 0;
-        let groupSequence = 0;
-        const addHeading = (parent, level, title) => {
-            const heading = el('h'+Math.min(6,Math.max(4,level)),title);
-            parent.append(heading);
-        };
-        const showMessage = (node, parent, depth, owner, oneInGroup) => {
-            const msg = node.message;
-            const role = rolesByName[msg.role] || msg.role;
-            const identifier = sourceName(msg.identifier,pm);
-            if (!oneInGroup || (msg.identifier && msg.identifier !== owner)) {
-                const label = identifier && msg.identifier !== owner
-                    ? identifier + ' · ' + role
-                    : 'Thông điệp ' + (++sequence) + ' · ' + role;
-                addHeading(parent,depth,label);
-            } else {
-                const descriptor = el('p','Vai trò: '+role,'st-ps-preview-role');
-                parent.append(descriptor);
-            }
-            const contentText = printContent(msg.content);
-            const extra = msg.tool_calls?.length
-                ? JSON.stringify(msg.tool_calls,null,2) : '';
-            const raw = contentText || (extra ? '[Lời gọi công cụ]' : '');
-            const pieces = splitText(raw);
-            if (pieces.length > 1) {
-                pieces.forEach((part,index) => {
-                    const piece = el('section',undefined,'st-ps-preview-part');
-                    addHeading(piece,depth+1,'Phần '+(index+1));
-                    piece.append(el('pre',part));
-                    parent.append(piece);
-                });
-            } else if (raw) {
-                parent.append(el('pre',raw));
-            }
-            if (extra) {
-                const tools = el('section',undefined,'st-ps-preview-part');
-                addHeading(tools,depth+1,'Lời gọi công cụ');
-                tools.append(el('pre',extra));
-                parent.append(tools);
+    function renderOutgoingPrompts(prompts, container, pm) {
+        prompts.forEach(({message:msg,source},index) => {
+            const item=el('section',undefined,'st-ps-preview-message');
+            item.dataset.outgoingPrompt=String(index+1);
+            const role=roles[msg.role] || msg.role;
+            const ownSource=sourceName(msg.identifier,pm);
+            const ancestorSource=source.slice().reverse()
+                .map(name=>sourceName(name,pm)).find(Boolean);
+            const name=ownSource || ancestorSource;
+            // No extra group headings, so N native outgoing messages have
+            // exactly N navigable headings, even if one is thousands of words.
+            const heading='Lời nhắc '+(index+1)+(name?' · '+name:'')+' · '+role;
+            item.append(el('h4',heading));
+            const body=printContent(msg.content);
+            if (body) item.append(el('pre',body));
+            if (msg.tool_calls?.length) {
+                item.append(el('pre',JSON.stringify(msg.tool_calls,null,2)));
             }
             if (typeof msg.reasoning==='string' && msg.reasoning) {
-                const reasoning=el('section',undefined,'st-ps-preview-part');
-                addHeading(reasoning,depth+1,'Nội dung suy luận được gửi');
-                reasoning.append(el('pre',msg.reasoning));
-                parent.append(reasoning);
+                item.append(el('pre',msg.reasoning));
             }
-        };
-        const visit = (node,parent,depth,owner='') => {
-            if (node.kind==='message') {
-                showMessage(node,parent,depth,owner,false);
-                return;
-            }
-            const group=el('section',undefined,'st-ps-preview-group');
-            const label=sourceName(node.identifier,pm) || 'Nhóm '+(++groupSequence);
-            addHeading(group,depth,label);
-            const justOneMessage=node.items.length===1 && node.items[0].kind==='message';
-            for (const child of node.items) {
-                if (justOneMessage) {
-                    showMessage(child,group,depth+1,node.identifier,true);
-                } else {
-                    visit(child,group,depth+1,node.identifier);
-                }
-            }
-            parent.append(group);
-        };
-        for (const item of tree) visit(item,target,4);
+            container.append(item);
+        });
     }
     function printContent(content) {
         if (typeof content === 'string') return content;
@@ -292,7 +216,7 @@
             const pm = (await nativeApi()).promptManager;
             if (!pm) throw new Error('Prompt Manager unavailable');
             await pm.tryGenerate(); // Original SillyTavern dry-run, never sends to AI.
-            const tree = collectMessageTree(pm.messages);
+            const outgoing = collectOutgoingPrompts(pm.messages);
             const dialog = el('dialog', undefined, 'st-ps-popup st-ps-preview-dialog');
             dialog.setAttribute('aria-label', 'Xem trước lời nhắc gửi tới AI');
             const heading = el('h3', 'Xem trước lời nhắc gửi tới AI');
@@ -304,8 +228,8 @@
                 warning.setAttribute('role', 'alert');
                 content.append(warning);
             }
-            if (!tree.length) content.append(el('p', 'Không có thông điệp nào để xem trước.'));
-            renderAssembledTree(tree,content,pm);
+            if (!outgoing.length) content.append(el('p', 'Không có thông điệp nào để xem trước.'));
+            renderOutgoingPrompts(outgoing,content,pm);
             dialog.append(content, btn('Đóng', () => dialog.close()));
             dialog.addEventListener('close', () => { dialog.remove(); previewButton.focus(); });
             document.body.append(dialog);
