@@ -88,6 +88,13 @@ with sync_playwright() as playwright:
     assert page.get_by_role('tab').all_inner_texts() == ['Cấu hình','Lời nhắc']
     page.locator('#st-ps-prompts-tab').click()
     assert page.locator('.st-ps-prompt').count() == 2
+    assert page.get_by_role('heading', name='Main Prompt').count() == 1
+    assert page.get_by_role('heading', name='Lời nhắc thứ hai').count() == 1
+    assert page.locator('.st-ps-heading h3[role="presentation"]').count() == 0
+    assert page.locator('.st-ps-switch[role="checkbox"]').count() == 2
+    assert page.locator('.st-ps-switch').first.get_attribute('aria-label') is None
+    assert page.locator('.st-ps-switch').nth(0).get_attribute('aria-checked') == 'true'
+    assert page.locator('.st-ps-switch').nth(1).get_attribute('aria-checked') == 'false'
     assert page.locator('.st-ps-content').first.inner_text() == 'Dòng đầu\n\nDòng cuối'
     page.locator('.st-ps-title').first.click()
     assert page.evaluate('window.__edited') == 'main'
