@@ -150,7 +150,12 @@
     function sourceName(identifier, pm) {
         const id=String(identifier || '').trim();
         if (!id) return '';
-        return sourceTitles[id] || pm?.getPromptById?.(id)?.name || id;
+        const known=sourceTitles[id] || pm?.getPromptById?.(id)?.name;
+        if (known) return String(known).trim();
+        // SillyTavern assigns UUIDs to user-defined prompts. They are
+        // storage identifiers, not helpful heading labels for TalkBack.
+        if (/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)) return '';
+        return id;
     }
     function collectOutgoingPrompts(node, output = [], context = [], depth = 0) {
         if (!node || depth > 100) return output;
